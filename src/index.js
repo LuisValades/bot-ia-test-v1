@@ -159,7 +159,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
 
   let availableSlots = [];
   let slotsContext = '';
-  if (conversation.stage === 'proponiendo_horario' || conversation.proposed_slots) {
+  const activeStage = !['confirmado', 'finalizado'].includes(conversation.stage);
+  if (activeStage) {
     availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
     slotsContext = formatSlotsForLead(availableSlots, 6);
   }
@@ -182,6 +183,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
 
   let replyText = aiResponse.text;
   const action = aiResponse.action;
+  console.log(`[${leadName || 'Lead'}] ACTION:`, JSON.stringify(action));
 
   if (action.captured_name && !hasName) {
     const cleanName = String(action.captured_name).trim().slice(0, 80);
