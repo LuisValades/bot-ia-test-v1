@@ -55,17 +55,22 @@ Lead con nombre dice "quiero liquidez":
 Lead acepta horario:
 "Listo Juan, te agendo el martes 1pm. Te llega confirmación 📩 [ACTION]{\\"intent\\":\\"liquidez\\",\\"next_stage\\":\\"confirmado\\",\\"propose_slots\\":false,\\"book_slot\\":\\"2026-04-21T13:00:00-06:00\\",\\"captured_name\\":null}[/ACTION]"`;
 
-export async function chat({ history, userMessage, contactName, hasName, slotsContext, attachments = [] }) {
+export async function chat({ history, userMessage, contactName, hasName, slotsContext, availableSlotsIso = [], attachments = [] }) {
   const nameContext = hasName && contactName
     ? `Nombre del lead (YA lo conoces, úsalo): ${contactName}`
     : `NO conoces el nombre del lead todavía. Si es tu primer mensaje o aún no lo ha dicho, PREGUNTA el nombre antes de avanzar. Cuando lo dé, pon captured_name en el ACTION.`;
 
   const finalUserContent = buildUserContent(userMessage, attachments);
 
+  const isoSlotsMessage = availableSlotsIso && availableSlotsIso.length > 0
+    ? `Lista EXACTA de slots disponibles (ISO 8601). CUANDO el lead acepte un horario, "book_slot" DEBE ser uno de estos strings exactos, copiado tal cual (no inventes fechas ni offsets): ${JSON.stringify(availableSlotsIso)}`
+    : null;
+
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'system', content: nameContext },
-    ...(slotsContext ? [{ role: 'system', content: `Slots disponibles próximos: ${slotsContext}` }] : []),
+    ...(slotsContext ? [{ role: 'system', content: `Slots disponibles próximos (formato humano para mostrarle al lead): ${slotsContext}` }] : []),
+    ...(isoSlotsMessage ? [{ role: 'system', content: isoSlotsMessage }] : []),
     ...(attachments?.length
       ? [{ role: 'system', content: 'El lead envió archivos adjuntos. Si son imágenes (INE, comprobantes, propiedad, etc.) o PDFs, LÉELOS y coméntalos brevemente en tu respuesta. Si hay audio, ya viene transcrito en el mensaje.' }]
       : []),

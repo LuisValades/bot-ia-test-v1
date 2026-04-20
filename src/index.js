@@ -176,6 +176,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     contactName: leadName,
     hasName,
     slotsContext,
+    availableSlotsIso: availableSlots,
     attachments: isInitial ? [] : attachments
   });
 
@@ -206,24 +207,55 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   let appointmentId = null;
   let appointmentAt = null;
   if (action.book_slot) {
-    const matched = findSlotMatch(action.book_slot, availableSlots) || action.book_slot;
-    try {
-      const appt = await createAppointment({
-        contactId,
-        startTime: matched,
-        title: `Bot Alejandra - ${fullName}`
-      });
-      appointmentId = appt.id;
-      appointmentAt = matched;
+    if (availableSlots.length === 0) {
+      availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
+    }
+    const matched = findSlotMatch(action.book_slot, availableSlots);
+    if (!matched) {
+      console.warn(`[${leadName || 'Lead'}] book_slot "${action.book_slot}" no coincide con ningún slot real; re-proponiendo`);
+      const freshSlots = availableSlots.length > 0 ? availableSlots : await getNextSlots({ daysAhead: 7, take: 3 });
+      const propuesta = formatSlotsForLead(freshSlots, 3);
+      replyText = propuesta
+        ? `Hmm, ese horario exacto ya no está disponible. ¿Te viene alguno de estos? ${propuesta}`
+        : 'Justo ese horario se agotó. Déjame consultarle al asesor y te confirmo.';
       await updateConversation(contactId, {
-        stage: 'confirmado',
-        intent: action.intent,
-        appointment_id: appointmentId,
-        appointment_at: appointmentAt
+        stage: 'proponiendo_horario',
+        proposed_slots: freshSlots,
+        intent: action.intent
       });
-    } catch (err) {
-      console.error('Error creando cita:', err.response?.data || err.message);
-      replyText = 'Tuve un problema agendando. Te confirmo el horario en un momento.';
+    } else {
+      try {
+        const appt = await createAppointment({
+          contactId,
+          startTime: matched,
+          title: `Bot Alejandra - ${fullName}`
+        });
+        appointmentId = appt.id;
+        appointmentAt = matched;
+        await updateConversation(contactId, {
+          stage: 'confirmado',
+          intent: action.intent,
+          appointment_id: appointmentId,
+          appointment_at: appointmentAt
+        });
+      } catch (err) {
+        const msg = err.response?.data?.message || err.message;
+        console.error('Error creando cita:', err.response?.data || err.message);
+        if (String(msg).toLowerCase().includes('no longer available')) {
+          const freshSlots = await getNextSlots({ daysAhead: 7, take: 3 });
+          const propuesta = formatSlotsForLead(freshSlots, 3);
+          replyText = propuesta
+            ? `Se me acaba de ocupar ese horario 😅. ¿Te viene alguno de estos? ${propuesta}`
+            : 'Ese horario ya se ocupó y no tengo más esta semana. Te contacta el asesor mañana.';
+          await updateConversation(contactId, {
+            stage: 'proponiendo_horario',
+            proposed_slots: freshSlots,
+            intent: action.intent
+          });
+        } else {
+          replyText = 'Tuve un problema técnico agendando. El asesor te contacta en breve para confirmar.';
+        }
+      }
     }
   } else if (!action.propose_slots) {
     await updateConversation(contactId, {
