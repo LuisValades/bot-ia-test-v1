@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
 import { sendSMS, getContact, createAppointment } from './ghl.js';
 import { chat } from './ai.js';
-import { getNextSlots, formatSlotsForLead, formatSlotPairs, findSlotMatch } from './calendar.js';
+import { getNextSlots, formatSlotsForLead, formatSlotPairs, findSlotMatch, tryMatchUserTimeToSlot } from './calendar.js';
 import { runFollowups } from './followup.js';
 import { processAttachments } from './media.js';
 
@@ -188,6 +188,18 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   let replyText = aiResponse.text;
   const action = aiResponse.action;
   console.log(`[${leadName || 'Lead'}] ACTION:`, JSON.stringify(action));
+
+  if (!action.book_slot && !isInitial && availableSlots.length > 0) {
+    const rescuedSlot = tryMatchUserTimeToSlot(userMessage, availableSlots);
+    if (rescuedSlot) {
+      console.log(`[${leadName || 'Lead'}] rescue: user pidió hora; matcheo código a ${rescuedSlot}`);
+      action.book_slot = rescuedSlot;
+      const pair = slotPairs.find(p => p.iso === rescuedSlot);
+      if (pair) {
+        replyText = `Listo ${leadName || ''}, te agendo para ${pair.human}. Te llegará confirmación 📩`.trim();
+      }
+    }
+  }
 
   if (action.captured_name && !hasName) {
     const cleanName = String(action.captured_name).trim().slice(0, 80);
