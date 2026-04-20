@@ -47,6 +47,8 @@ async function handleTrigger(payload) {
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
   const phone = contact?.phone || body.phone;
   const advisor = await resolveAdvisor(contact);
+  const tags = Array.isArray(contact?.tags) ? contact.tags : [];
+  const isReactivation = detectReactivation(tags);
 
   const conversation = await getOrCreateConversation({
     contactId,
@@ -55,12 +57,34 @@ async function handleTrigger(payload) {
     fullName
   });
 
-  if (conversation.stage !== 'inicio') {
+  const allowReTrigger = isReactivation && ['inicio', 'finalizado', 'confirmado'].includes(conversation.stage);
+  if (conversation.stage !== 'inicio' && !allowReTrigger) {
     console.log(`[${fullName}] ya en etapa ${conversation.stage}, ignorando trigger duplicado`);
     return;
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage: '__TRIGGER_INICIAL__', advisor });
+  if (allowReTrigger && conversation.stage !== 'inicio') {
+    await updateConversation(contactId, {
+      stage: 'inicio',
+      followup_count: 0,
+      followup_at: null
+    });
+    conversation.stage = 'inicio';
+    conversation.followup_count = 0;
+    console.log(`[${fullName}] reactivación detectada desde stage ${conversation.stage}, reseteando a inicio`);
+  }
+
+  await runTurn({ conversation, contactId, fullName, userMessage: '__TRIGGER_INICIAL__', advisor, tags, isReactivation });
+}
+
+function detectReactivation(tags) {
+  if (!Array.isArray(tags) || tags.length === 0) return false;
+  const triggerTags = (process.env.REACTIVATION_TAGS || 'reactivacion,reactivación,bot-reactivacion,reengagement,re-engagement,seguimiento')
+    .split(',')
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean);
+  const normalized = tags.map(t => String(t).toLowerCase().trim());
+  return triggerTags.some(trigger => normalized.includes(trigger));
 }
 
 async function handleReply(payload) {
@@ -79,6 +103,8 @@ async function handleReply(payload) {
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
   const phone = contact?.phone || body.phone;
   const advisor = await resolveAdvisor(contact);
+  const tags = Array.isArray(contact?.tags) ? contact.tags : [];
+  const isReactivation = detectReactivation(tags);
 
   const conversation = await getOrCreateConversation({
     contactId,
@@ -98,7 +124,7 @@ async function handleReply(payload) {
     console.log(`[${fullName}] ${attachments.length} attachment(s): ${kinds}`);
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor });
+  await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor, tags, isReactivation });
 }
 
 async function resolveAdvisor(contact) {
@@ -138,7 +164,7 @@ function parseAttachments(raw) {
   return [];
 }
 
-async function runTurn({ conversation, contactId, fullName, userMessage, attachments = [], advisor = null }) {
+async function runTurn({ conversation, contactId, fullName, userMessage, attachments = [], advisor = null, tags = [], isReactivation = false }) {
   const isInitial = userMessage === '__TRIGGER_INICIAL__';
 
   if (!isInitial) {
@@ -186,9 +212,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   }
 
   const promptInput = isInitial
-    ? (hasName
-      ? `[SISTEMA: Este lead (${leadName}) acaba de entrar a la etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo POR SU NOMBRE, preséntate como Alejandra de CrediExpres y pregunta qué tipo de crédito le interesa.]`
-      : `[SISTEMA: Un lead acaba de entrar a la etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo, preséntate como Alejandra de CrediExpres y PREGUNTA SU NOMBRE antes de avanzar.]`)
+    ? (isReactivation
+      ? (hasName
+        ? `[SISTEMA: Lead en REACTIVACIÓN. ${leadName} fue contactado antes pero la conversación no avanzó. Salúdalo por nombre reconociendo que hace tiempo no hablaban (sin fingir memoria personal), menciona que eres Alejandra de CrediExpres y pregúntale si sigue interesado en un crédito. Tono cálido y breve.]`
+        : `[SISTEMA: Lead en REACTIVACIÓN (sin nombre conocido). Fue contactado antes. Salúdalo, preséntate como Alejandra de CrediExpres, reconoce que hace tiempo no hablaban y pregúntale su nombre para retomar.]`)
+      : (hasName
+        ? `[SISTEMA: Nuevo lead (${leadName}) en etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo POR SU NOMBRE, preséntate como Alejandra de CrediExpres y pregunta qué tipo de crédito le interesa.]`
+        : `[SISTEMA: Nuevo lead en etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo, preséntate como Alejandra de CrediExpres y PREGUNTA SU NOMBRE antes de avanzar.]`))
     : userMessage;
 
   const aiResponse = await chat({
@@ -203,7 +233,9 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     attachments: isInitial ? [] : attachments,
     postBookingContext,
     profile: conversation.profile || {},
-    advisor
+    advisor,
+    tags,
+    isReactivation
   });
 
   let replyText = aiResponse.text;

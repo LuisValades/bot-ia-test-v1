@@ -100,7 +100,7 @@ Cuando propongas cita, recibirás un "MAPEO DE SLOTS" con formato numerado. **C�
 - "El lead envió archivos adjuntos" — imágenes/PDFs para leer, audios vienen transcritos inline.
 - Contexto post-booking — el lead ya tiene cita, responde cordial sin re-vender.`;
 
-export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotsMenu = '', slotPairs = [], availableSlotsIso = [], attachments = [], postBookingContext = null, profile = null, advisor = null }) {
+export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotsMenu = '', slotPairs = [], availableSlotsIso = [], attachments = [], postBookingContext = null, profile = null, advisor = null, tags = [], isReactivation = false }) {
   const nameContext = hasName && contactName
     ? `Nombre del lead (YA lo conoces, úsalo): ${contactName}`
     : `NO conoces el nombre del lead todavía. Si es tu primer mensaje o aún no lo ha dicho, PREGUNTA el nombre antes de avanzar. Cuando lo dé, pon captured_name en el ACTION.`;
@@ -132,6 +132,12 @@ REGLAS INVIOLABLES:
     { role: 'system', content: nameContext },
     ...(advisor?.name
       ? [{ role: 'system', content: `ASESOR ASIGNADO a este lead: ${advisor.name}. Cuando propongas la llamada de 10 min, MENCIÓNALO POR NOMBRE (ej. "podemos agendar una llamada con ${advisor.name}, es parte de nuestro equipo"). La cita quedará asignada automáticamente a ${advisor.name}.` }]
+      : []),
+    ...(isReactivation
+      ? [{ role: 'system', content: '⚡ LEAD EN REACTIVACIÓN: este contacto había sido abordado antes pero la conversación no avanzó. Saluda con tono cercano reconociendo que hace tiempo no hablaban, SIN fingir memoria personal. Enfoca en re-capturar interés y luego perfilar (buró / ingresos / necesidad). No lo trates como un desconocido total — ya conoce la marca CrediExpres.' }]
+      : []),
+    ...(tags && tags.length > 0
+      ? [{ role: 'system', content: `Tags del contacto en GHL (contexto útil, pueden indicar intereses previos o fuente del lead): ${tags.join(', ')}` }]
       : []),
     ...(profile && Object.keys(profile).length > 0
       ? [{ role: 'system', content: `PERFIL ACTUAL DEL LEAD (ya lo capturaste antes, NO vuelvas a preguntarlo): ${JSON.stringify(profile)}` }]
