@@ -1,6 +1,6 @@
 import { openrouter } from './openrouter.js';
 
-const MODEL = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5';
+const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
 const SYSTEM_PROMPT = `Eres Alejandra, asesora amable de CrediExpres Mexico (broker hipotecario, PyME, liquidez y TPV).
 
