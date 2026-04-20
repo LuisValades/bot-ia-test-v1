@@ -270,13 +270,27 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
         intent: action.intent
       });
     } else {
+      const appointmentPayload = {
+        contactId,
+        startTime: matched,
+        title: `Llamada 10 min - ${fullName}`
+      };
+      if (advisor?.id) appointmentPayload.assignedUserId = advisor.id;
+
       try {
-        const appt = await createAppointment({
-          contactId,
-          startTime: matched,
-          title: `Llamada 10 min - ${fullName}`,
-          assignedUserId: advisor?.id
-        });
+        let appt;
+        try {
+          appt = await createAppointment(appointmentPayload);
+        } catch (teamErr) {
+          const teamMsg = (teamErr.response?.data?.message || '').toLowerCase();
+          if (appointmentPayload.assignedUserId && teamMsg.includes('not part of calendar team')) {
+            console.warn(`[${leadName || fullName}] asesor ${advisor?.name || advisor?.id} no está en calendar team; reintentando sin assignedUserId`);
+            delete appointmentPayload.assignedUserId;
+            appt = await createAppointment(appointmentPayload);
+          } else {
+            throw teamErr;
+          }
+        }
         appointmentId = appt.id;
         appointmentAt = matched;
         await updateConversation(contactId, {
