@@ -2,9 +2,9 @@ import './env.js';
 import express from 'express';
 import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
-import { sendSMS, getContact, createAppointment } from './ghl.js';
+import { sendSMS, getContact, createAppointment, createContactNote } from './ghl.js';
 import { chat } from './ai.js';
-import { getNextSlots, formatSlotsForLead, formatSlotPairs, findSlotMatch, tryMatchUserTimeToSlot } from './calendar.js';
+import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
 import { runFollowups } from './followup.js';
 import { processAttachments } from './media.js';
 
@@ -164,11 +164,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   let availableSlots = [];
   let slotPairs = [];
   let slotsContext = '';
+  let slotsMenu = '';
   const activeStage = !['confirmado', 'finalizado'].includes(conversation.stage);
   if (activeStage) {
     availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
     slotPairs = formatSlotPairs(availableSlots, 6);
     slotsContext = formatSlotsForLead(availableSlots, 6);
+    slotsMenu = formatSlotsMenu(availableSlots, 6);
     console.log(`[${leadName || fullName}] slots reales:`, slotsContext);
   }
 
@@ -185,6 +187,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     hasName,
     slotsContext,
     slotPairs,
+    slotsMenu,
     availableSlotsIso: availableSlots,
     attachments: isInitial ? [] : attachments,
     postBookingContext,
@@ -196,13 +199,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   console.log(`[${leadName || 'Lead'}] ACTION:`, JSON.stringify(action));
 
   if (!action.book_slot && !isInitial && availableSlots.length > 0) {
-    const rescuedSlot = tryMatchUserTimeToSlot(userMessage, availableSlots);
+    const rescuedSlot = tryMatchUserOptionNumber(userMessage, availableSlots) || tryMatchUserTimeToSlot(userMessage, availableSlots);
     if (rescuedSlot) {
-      console.log(`[${leadName || 'Lead'}] rescue: user pidió hora; matcheo código a ${rescuedSlot}`);
+      console.log(`[${leadName || 'Lead'}] rescue: user eligió; matcheo código a ${rescuedSlot}`);
       action.book_slot = rescuedSlot;
       const pair = slotPairs.find(p => p.iso === rescuedSlot);
       if (pair) {
-        replyText = `Listo ${leadName || ''}, te agendo para ${pair.human}. Te llegará confirmación 📩`.trim();
+        replyText = `Listo, te agendo para ${pair.human}.\n\nEs una llamada de ~10 min con el asesor.\n\nTe llegará confirmación 📩`;
       }
     }
   }
@@ -259,7 +262,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
         const appt = await createAppointment({
           contactId,
           startTime: matched,
-          title: `Bot Alejandra - ${fullName}`
+          title: `Llamada 10 min - ${fullName}`
         });
         appointmentId = appt.id;
         appointmentAt = matched;
@@ -269,6 +272,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
           appointment_id: appointmentId,
           appointment_at: appointmentAt
         });
+        await createBookingNote({ contactId, leadName: leadName || fullName, profile: conversation.profile || {}, intent: action.intent, appointmentAt: matched });
       } catch (err) {
         const msg = err.response?.data?.message || err.message;
         console.error('Error creando cita:', err.response?.data || err.message);
@@ -320,6 +324,47 @@ function hasRealName(name) {
   if (clean.length < 3) return false;
   const lower = clean.toLowerCase();
   return lower !== 'lead' && lower !== 'unknown' && lower !== 'sin nombre';
+}
+
+async function createBookingNote({ contactId, leadName, profile, intent, appointmentAt }) {
+  try {
+    const when = formatSlotEs(appointmentAt);
+    const fields = [
+      `Lead: ${leadName || '(sin nombre)'}`,
+      `Interés: ${intent || 'no identificado'}`,
+      `Cita agendada: ${when} (10 min)`,
+    ];
+    if (profile && Object.keys(profile).length > 0) {
+      fields.push('');
+      fields.push('Perfil capturado por el bot:');
+      const labelMap = {
+        ingreso_mensual_mxn: 'Ingreso mensual',
+        tipo_ingreso: 'Tipo ingreso',
+        monto_solicitado_mxn: 'Monto solicitado',
+        proposito: 'Propósito',
+        antiguedad_laboral_meses: 'Antigüedad laboral (meses)',
+        historial_buro: 'Historial buró',
+        tiene_propiedad: 'Tiene propiedad',
+        necesidad: 'Necesidad',
+        notas: 'Notas'
+      };
+      for (const [k, v] of Object.entries(profile)) {
+        if (v === null || v === undefined || v === '') continue;
+        const label = labelMap[k] || k;
+        const val = typeof v === 'number' && (k === 'ingreso_mensual_mxn' || k === 'monto_solicitado_mxn')
+          ? `$${v.toLocaleString('es-MX')} MXN`
+          : String(v);
+        fields.push(`- ${label}: ${val}`);
+      }
+    }
+    fields.push('');
+    fields.push('— Nota generada automáticamente por Bot Alejandra');
+    const body = fields.join('\n');
+    const note = await createContactNote({ contactId, body });
+    console.log(`[${leadName}] nota GHL creada: ${note?.id || 'ok'}`);
+  } catch (err) {
+    console.error('createBookingNote err:', err.response?.data || err.message);
+  }
 }
 
 const PORT = process.env.PORT || 3000;

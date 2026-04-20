@@ -40,7 +40,43 @@ export function formatSlotsForLead(slots, max = 3) {
 }
 
 export function formatSlotPairs(slots, max = 6) {
-  return slots.slice(0, max).map(iso => ({ human: formatSlotEs(iso), iso }));
+  return slots.slice(0, max).map((iso, i) => ({ number: i + 1, human: formatSlotEs(iso), iso }));
+}
+
+function slotDayHour(iso) {
+  const parts = new Intl.DateTimeFormat('es-MX', {
+    timeZone: TIMEZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(new Date(iso)).reduce((a, p) => ({ ...a, [p.type]: p.value }), {});
+  const dayLabel = `${parts.weekday} ${parts.day} de ${parts.month}`.replace(/^./, c => c.toUpperCase());
+  let h = parseInt(parts.hour, 10);
+  const min = parts.minute;
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  const timeLabel = `${h}:${min}${ampm}`;
+  return { dayLabel, timeLabel };
+}
+
+export function formatSlotsMenu(slots, max = 6) {
+  const limited = slots.slice(0, max);
+  const groups = new Map();
+  limited.forEach((iso, idx) => {
+    const { dayLabel, timeLabel } = slotDayHour(iso);
+    if (!groups.has(dayLabel)) groups.set(dayLabel, []);
+    groups.get(dayLabel).push({ number: idx + 1, timeLabel });
+  });
+  const lines = [];
+  for (const [day, items] of groups.entries()) {
+    lines.push(day);
+    for (const it of items) lines.push(`${it.number} - ${it.timeLabel}`);
+    lines.push('');
+  }
+  return lines.join('\n').trim();
 }
 
 export function findSlotMatch(requestedIso, availableSlots) {
@@ -67,6 +103,21 @@ function slotHourMin(iso) {
   }).formatToParts(new Date(iso)).reduce((a, p) => ({ ...a, [p.type]: p.value }), {});
   const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(parts.weekday);
   return { hour: parseInt(parts.hour, 10), minute: parseInt(parts.minute, 10), dow };
+}
+
+export function tryMatchUserOptionNumber(message, slots) {
+  if (!message || !slots?.length) return null;
+  const text = message.toLowerCase().trim();
+  const optionMatch = text.match(/\b(?:opci[oó]n|opc|numero|n[úu]m|el|la|opt)\s*(\d{1,2})\b/i);
+  if (optionMatch) {
+    const n = parseInt(optionMatch[1], 10);
+    if (n >= 1 && n <= slots.length) return slots[n - 1];
+  }
+  if (/^\d{1,2}$/.test(text)) {
+    const n = parseInt(text, 10);
+    if (n >= 1 && n <= slots.length) return slots[n - 1];
+  }
+  return null;
 }
 
 export function tryMatchUserTimeToSlot(message, slots) {

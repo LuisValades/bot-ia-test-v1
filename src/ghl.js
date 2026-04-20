@@ -74,3 +74,8 @@ export async function cancelAppointment(appointmentId) {
   );
   return data;
 }
+
+export async function createContactNote({ contactId, body }) {
+  const { data } = await ghlV2.post(`/contacts/${contactId}/notes`, { body });
+  return data;
+}
