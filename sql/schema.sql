@@ -31,6 +31,18 @@ alter table conversations add column if not exists followup_count int default 0;
 alter table conversations add column if not exists followup_at timestamptz;
 create index if not exists idx_conversations_followup on conversations(stage, last_msg_at, followup_count);
 
+-- Perfil de calificación del lead (datos capturados por el bot durante la conversación)
+-- Campos esperados en el JSON:
+--   ingreso_mensual_mxn         (number)  -- ingreso neto mensual aproximado
+--   tipo_ingreso                (string)  -- asalariado | negocio_propio | independiente | economy_usa | mixto
+--   monto_solicitado_mxn        (number)  -- cuánto busca
+--   proposito                   (string)  -- adquisicion | mejora | liquidez | refinanciamiento | negocio | terreno
+--   antiguedad_laboral_meses    (number)
+--   historial_buro              (string)  -- sano | manchado | sin_info
+--   tiene_propiedad             (bool)
+--   notas                       (string)  -- texto libre relevante
+alter table conversations add column if not exists profile jsonb default '{}';
+
 -- ===== messages =====
 -- Log completo de cada SMS (in/out) y la respuesta IA
 create table if not exists messages (

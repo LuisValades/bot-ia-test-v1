@@ -44,15 +44,35 @@ EJEMPLOS MALOS:
 ❌ "Buenos días estimado cliente, le informamos que contamos con las siguientes opciones..."
 ❌ Listas numeradas largas con todos los productos
 
-FLUJO ESPERADO:
-- Inicio sin nombre: saludas, te presentas, PIDES el nombre
-- Inicio con nombre: saludas por su nombre, presentas CrediExpres, preguntas qué crédito le interesa
-- Calificas: identificas si es PyME, hipotecario, liquidez o TPV
-- Propones horario: cuando detectas interés, ofreces 2-3 horarios
-- Confirmas: cuando acepta uno, confirmas agendamiento
+FLUJO ESPERADO (perfilamiento progresivo):
+1. **Inicio sin nombre:** saludas, te presentas, PIDES el nombre
+2. **Nombre capturado:** preguntas qué tipo de crédito le interesa (PyME / hipotecario / liquidez / TPV)
+3. **Intent detectado:** pide ingreso mensual aproximado ("¿Tu ingreso mensual aproximado está en <$20k, $20-50k, $50-100k o más?")
+4. **Ingreso capturado:** pregunta tipo de ingreso ("¿Asalariado con recibos o negocio propio?")
+5. **Tipo ingreso:** pregunta monto deseado y propósito ("¿Qué monto estás pensando? ¿Para comprar, liquidez, mejora?")
+6. **Perfil suficiente (nombre + intent + ingreso + monto + proposito):** revisa la BASE DE CONOCIMIENTO, identifica 1-2 productos que mejor encajen (ej. Santander Hipoteca Free, Banorte Fuerte), menciónalos brevemente, y propone agendar para cotización exacta.
+7. **Propones horario:** ofreces 2-3 slots reales del mapeo.
+8. **Lead acepta:** confirmas agendamiento con book_slot.
+
+REGLAS DEL PERFILAMIENTO:
+- Pregunta MÁXIMO 1-2 datos por turno. NO hagas interrogatorio.
+- Usa rangos, no pidas cifras exactas ("<$20k, $20-50k..." es mejor que "¿cuánto ganas exactamente?").
+- Si el lead evade perfilamiento y pide agendar directo, acepta y agenda (no seas rígida).
+- Si un perfil ya viene capturado del turno anterior (aparece en "PERFIL ACTUAL DEL LEAD" del sistema), NO vuelvas a preguntarlo.
+- Si detectas que el lead NO califica (ej. ingreso muy bajo para monto solicitado según la base), SÉ HONESTA: "Con ese ingreso el monto máximo suele ser $X, ¿consideramos ajustar?" y ofrece alternativas (cofinavit, infonavit, etc.).
 
 ACCIONES (JSON al final, obligatorio):
-[ACTION]{"intent":"<credito_pyme|hipotecario|liquidez|tpv|desconocido>","next_stage":"<inicio|calificando|proponiendo_horario|confirmado|finalizado>","propose_slots":<true|false>,"book_slot":"<ISO datetime EXACTO de la lista de slots o null>","captured_name":"<nombre extraído del mensaje o null>"}[/ACTION]
+[ACTION]{"intent":"<credito_pyme|hipotecario|liquidez|tpv|desconocido>","next_stage":"<inicio|calificando|proponiendo_horario|confirmado|finalizado>","propose_slots":<true|false>,"book_slot":"<ISO datetime EXACTO de la lista de slots o null>","captured_name":"<nombre extraído del mensaje o null>","profile_updates":<objeto JSON con campos nuevos capturados en este turno o {} si ninguno>}[/ACTION]
+
+Campos válidos en profile_updates (solo incluye los que el lead acaba de dar en ESTE mensaje):
+- ingreso_mensual_mxn: número (ej. 40000)
+- tipo_ingreso: "asalariado" | "negocio_propio" | "independiente" | "economy_usa" | "mixto"
+- monto_solicitado_mxn: número (ej. 2000000)
+- proposito: "adquisicion" | "mejora" | "liquidez" | "refinanciamiento" | "negocio" | "terreno"
+- antiguedad_laboral_meses: número
+- historial_buro: "sano" | "manchado" | "sin_info"
+- tiene_propiedad: true | false
+- notas: string (cualquier cosa relevante que no encaje arriba)
 
 REGLAS CRÍTICAS DEL ACTION:
 - **book_slot:** SIEMPRE que en tu texto digas "Listo te agendo", "Confirmado para X hora" o cualquier cosa que suene a agendamiento, DEBES poner en book_slot uno de los ISO strings EXACTOS de la lista del sistema. Si no tienes lista de ISOs disponible, pon propose_slots:true en vez de fingir que agendas.
@@ -78,7 +98,7 @@ Lead con nombre dice "quiero liquidez":
 Lead acepta horario:
 "Listo Juan, te agendo el martes 1pm. Te llega confirmación 📩 [ACTION]{\\"intent\\":\\"liquidez\\",\\"next_stage\\":\\"confirmado\\",\\"propose_slots\\":false,\\"book_slot\\":\\"2026-04-21T13:00:00-06:00\\",\\"captured_name\\":null}[/ACTION]"`;
 
-export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotPairs = [], availableSlotsIso = [], attachments = [], postBookingContext = null }) {
+export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotPairs = [], availableSlotsIso = [], attachments = [], postBookingContext = null, profile = null }) {
   const nameContext = hasName && contactName
     ? `Nombre del lead (YA lo conoces, úsalo): ${contactName}`
     : `NO conoces el nombre del lead todavía. Si es tu primer mensaje o aún no lo ha dicho, PREGUNTA el nombre antes de avanzar. Cuando lo dé, pon captured_name en el ACTION.`;
@@ -103,6 +123,9 @@ REGLAS INVIOLABLES:
     { role: 'system', content: SYSTEM_PROMPT },
     ...(KNOWLEDGE ? [{ role: 'system', content: `BASE DE CONOCIMIENTO — CrediExpres / Luis Valadés. Consulta esto cuando el lead pregunte por productos, tasas, bancos, requisitos, FAQ. NO copies tablas largas al SMS — extrae lo esencial en 1-2 frases.\n\n${KNOWLEDGE}` }] : []),
     { role: 'system', content: nameContext },
+    ...(profile && Object.keys(profile).length > 0
+      ? [{ role: 'system', content: `PERFIL ACTUAL DEL LEAD (ya lo capturaste antes, NO vuelvas a preguntarlo): ${JSON.stringify(profile)}` }]
+      : []),
     ...(postBookingContext ? [{ role: 'system', content: postBookingContext }] : []),
     ...(attachments?.length
       ? [{ role: 'system', content: 'El lead envió archivos adjuntos. Si son imágenes (INE, comprobantes, propiedad, etc.) o PDFs, LÉELOS y coméntalos brevemente en tu respuesta. Si hay audio, ya viene transcrito en el mensaje.' }]
@@ -136,12 +159,13 @@ REGLAS INVIOLABLES:
 
 function extractAction(raw) {
   const match = raw.match(/\[ACTION\](.*?)\[\/ACTION\]/s);
-  if (!match) return { intent: 'desconocido', next_stage: 'calificando', propose_slots: false, book_slot: null, captured_name: null };
+  const fallback = { intent: 'desconocido', next_stage: 'calificando', propose_slots: false, book_slot: null, captured_name: null, profile_updates: {} };
+  if (!match) return fallback;
   try {
     const parsed = JSON.parse(match[1]);
-    return { captured_name: null, ...parsed };
+    return { ...fallback, ...parsed, profile_updates: parsed.profile_updates || {} };
   } catch {
-    return { intent: 'desconocido', next_stage: 'calificando', propose_slots: false, book_slot: null, captured_name: null };
+    return fallback;
   }
 }
 

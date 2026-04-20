@@ -187,7 +187,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     slotPairs,
     availableSlotsIso: availableSlots,
     attachments: isInitial ? [] : attachments,
-    postBookingContext
+    postBookingContext,
+    profile: conversation.profile || {}
   });
 
   let replyText = aiResponse.text;
@@ -212,6 +213,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
       await updateConversation(contactId, { full_name: cleanName });
       console.log(`[${cleanName}] nombre capturado y guardado`);
     }
+  }
+
+  if (action.profile_updates && typeof action.profile_updates === 'object' && Object.keys(action.profile_updates).length > 0) {
+    const currentProfile = conversation.profile || {};
+    const mergedProfile = { ...currentProfile, ...action.profile_updates };
+    await updateConversation(contactId, { profile: mergedProfile });
+    console.log(`[${leadName || 'Lead'}] perfil actualizado:`, JSON.stringify(action.profile_updates));
   }
 
   if (action.propose_slots && availableSlots.length === 0) {
