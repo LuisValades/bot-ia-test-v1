@@ -1,4 +1,16 @@
 import { openrouter } from './openrouter.js';
+import { readFileSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const KNOWLEDGE_PATH = join(__dirname, '..', 'knowledge.md');
+const KNOWLEDGE = existsSync(KNOWLEDGE_PATH) ? readFileSync(KNOWLEDGE_PATH, 'utf-8') : '';
+if (KNOWLEDGE) {
+  console.log(`[ai] knowledge.md cargado: ${KNOWLEDGE.length} chars (~${Math.round(KNOWLEDGE.length / 4)} tokens)`);
+} else {
+  console.warn('[ai] knowledge.md NO encontrado, Alejandra responderá sin base de conocimiento');
+}
 
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
@@ -11,8 +23,9 @@ REGLAS ESTRICTAS:
 4. Si es el PRIMER mensaje y NO sabes el nombre: PREGUNTA el nombre primero, antes de nada más.
 5. Sé natural: puntuación normal, emojis ocasionales (1 por mensaje máx), nada formal.
 6. Cada respuesta cabe en 1-2 SMS (~160 chars c/u). No hagas listas largas.
-7. Tu objetivo: AGENDAR CITA con un asesor. NO vendas crédito por SMS.
-8. NO inventes datos del lead. Si no sabes algo, pregunta.
+7. Tu objetivo principal: AGENDAR CITA con un asesor. Si el lead pregunta detalles (tasas, requisitos, bancos), responde con info PRECISA usando la BASE DE CONOCIMIENTO y luego invita a agendar.
+8. NO inventes datos del lead ni tasas/requisitos. Si el dato no está en la base de conocimiento, di "déjame confirmarte eso con un asesor" y ofrece agendar.
+9. NUNCA copies tablas largas ni listas numeradas al SMS — resume en 1-2 frases lo esencial.
 
 ESTRUCTURA (4 frases máximo):
 - Frase 1: saludo / reconocimiento
@@ -63,7 +76,7 @@ Lead con nombre dice "quiero liquidez":
 Lead acepta horario:
 "Listo Juan, te agendo el martes 1pm. Te llega confirmación 📩 [ACTION]{\\"intent\\":\\"liquidez\\",\\"next_stage\\":\\"confirmado\\",\\"propose_slots\\":false,\\"book_slot\\":\\"2026-04-21T13:00:00-06:00\\",\\"captured_name\\":null}[/ACTION]"`;
 
-export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotPairs = [], availableSlotsIso = [], attachments = [] }) {
+export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotPairs = [], availableSlotsIso = [], attachments = [], postBookingContext = null }) {
   const nameContext = hasName && contactName
     ? `Nombre del lead (YA lo conoces, úsalo): ${contactName}`
     : `NO conoces el nombre del lead todavía. Si es tu primer mensaje o aún no lo ha dicho, PREGUNTA el nombre antes de avanzar. Cuando lo dé, pon captured_name en el ACTION.`;
@@ -86,7 +99,9 @@ REGLAS INVIOLABLES:
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
+    ...(KNOWLEDGE ? [{ role: 'system', content: `BASE DE CONOCIMIENTO — CrediExpres / Luis Valadés. Consulta esto cuando el lead pregunte por productos, tasas, bancos, requisitos, FAQ. NO copies tablas largas al SMS — extrae lo esencial en 1-2 frases.\n\n${KNOWLEDGE}` }] : []),
     { role: 'system', content: nameContext },
+    ...(postBookingContext ? [{ role: 'system', content: postBookingContext }] : []),
     ...(attachments?.length
       ? [{ role: 'system', content: 'El lead envió archivos adjuntos. Si son imágenes (INE, comprobantes, propiedad, etc.) o PDFs, LÉELOS y coméntalos brevemente en tu respuesta. Si hay audio, ya viene transcrito en el mensaje.' }]
       : []),

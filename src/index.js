@@ -85,8 +85,8 @@ async function handleReply(payload) {
     fullName
   });
 
-  if (conversation.stage === 'finalizado' || conversation.stage === 'confirmado') {
-    console.log(`[${fullName}] conversación ${conversation.stage}, no responde`);
+  if (conversation.stage === 'finalizado') {
+    console.log(`[${fullName}] conversación finalizada, no responde`);
     return;
   }
 
@@ -157,6 +157,10 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
 
   const history = await getRecentMessages(contactId, 100);
 
+  const postBookingContext = conversation.stage === 'confirmado' && conversation.appointment_at
+    ? `El lead YA tiene una cita agendada para ${new Date(conversation.appointment_at).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'full', timeStyle: 'short' })}. Si pregunta algo, respóndele usando la base de conocimiento. Si quiere reagendar, propone nuevos slots y cambia la cita. Si quiere cancelar, confírmale que el asesor lo contactará. Si solo agradece o saluda, responde cordial sin volver a vender.`
+    : null;
+
   let availableSlots = [];
   let slotPairs = [];
   let slotsContext = '';
@@ -182,7 +186,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     slotsContext,
     slotPairs,
     availableSlotsIso: availableSlots,
-    attachments: isInitial ? [] : attachments
+    attachments: isInitial ? [] : attachments,
+    postBookingContext
   });
 
   let replyText = aiResponse.text;
