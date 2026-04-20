@@ -77,7 +77,6 @@ export async function chat({ history, userMessage, contactName, hasName, slotsCo
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'system', content: nameContext },
-    ...(pairsMessage ? [{ role: 'system', content: pairsMessage }] : (slotsContext ? [{ role: 'system', content: `Slots disponibles próximos: ${slotsContext}` }] : [])),
     ...(attachments?.length
       ? [{ role: 'system', content: 'El lead envió archivos adjuntos. Si son imágenes (INE, comprobantes, propiedad, etc.) o PDFs, LÉELOS y coméntalos brevemente en tu respuesta. Si hay audio, ya viene transcrito en el mensaje.' }]
       : []),
@@ -85,6 +84,9 @@ export async function chat({ history, userMessage, contactName, hasName, slotsCo
       role: m.direction === 'in' ? 'user' : 'assistant',
       content: m.body
     })),
+    ...(pairsMessage
+      ? [{ role: 'system', content: pairsMessage }]
+      : (slotsContext ? [{ role: 'system', content: `Slots disponibles próximos: ${slotsContext}` }] : [])),
     { role: 'user', content: finalUserContent }
   ];
 
