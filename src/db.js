@@ -39,7 +39,7 @@ export async function updateConversation(contactId, patch) {
   if (error) throw error;
 }
 
-export async function getRecentMessages(contactId, limit = 10) {
+export async function getRecentMessages(contactId, limit = 100) {
   const { data, error } = await supabase
     .from('messages')
     .select('direction, body, created_at')

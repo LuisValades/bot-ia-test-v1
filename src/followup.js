@@ -36,7 +36,7 @@ async function sendFollowup(conv) {
   const prevCount = conv.followup_count || 0;
   const nudgeNumber = prevCount + 1;
 
-  const history = await getRecentMessages(contactId, 10);
+  const history = await getRecentMessages(contactId, 100);
   if (history.length === 0) return;
   const lastMsg = history[history.length - 1];
   if (lastMsg.direction !== 'out') return;

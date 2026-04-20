@@ -102,7 +102,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage }) {
     });
   }
 
-  const history = await getRecentMessages(contactId, 10);
+  const history = await getRecentMessages(contactId, 100);
 
   let availableSlots = [];
   let slotsContext = '';
