@@ -299,6 +299,9 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     });
   }
 
+  const delayMs = getNaturalDelay();
+  console.log(`[${leadName || fullName}] esperando ${delayMs}ms (respuesta natural) antes de enviar SMS`);
+  await sleep(delayMs);
   const sent = await sendSMS({ contactId, message: replyText });
 
   const usage = aiResponse.usage || {};
@@ -316,6 +319,17 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
 
   const logName = action.captured_name || leadName || 'Lead';
   console.log(`[${logName}] ${isInitial ? '🟢 trigger' : `in: "${userMessage}"`} → out: "${replyText}"`);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getNaturalDelay() {
+  const base = parseInt(process.env.RESPONSE_DELAY_MS || '10000', 10);
+  const jitterRange = parseInt(process.env.RESPONSE_DELAY_JITTER_MS || '3000', 10);
+  const jitter = Math.floor(Math.random() * jitterRange) - Math.floor(jitterRange / 2);
+  return Math.max(1000, base + jitter);
 }
 
 function hasRealName(name) {
