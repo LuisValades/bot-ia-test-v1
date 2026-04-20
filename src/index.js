@@ -102,6 +102,10 @@ async function runTurn({ conversation, contactId, fullName, userMessage }) {
     });
   }
 
+  const storedName = (conversation.full_name || '').trim();
+  const leadName = hasRealName(storedName) ? storedName : (hasRealName(fullName) ? fullName : '');
+  const hasName = !!leadName;
+
   const history = await getRecentMessages(contactId, 100);
 
   let availableSlots = [];
@@ -112,18 +116,29 @@ async function runTurn({ conversation, contactId, fullName, userMessage }) {
   }
 
   const promptInput = isInitial
-    ? `[SISTEMA: Este lead acaba de entrar a la etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo, preséntate como Alejandra de CrediExpres y pregunta qué tipo de crédito le interesa.]`
+    ? (hasName
+      ? `[SISTEMA: Este lead (${leadName}) acaba de entrar a la etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo POR SU NOMBRE, preséntate como Alejandra de CrediExpres y pregunta qué tipo de crédito le interesa.]`
+      : `[SISTEMA: Un lead acaba de entrar a la etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo, preséntate como Alejandra de CrediExpres y PREGUNTA SU NOMBRE antes de avanzar.]`)
     : userMessage;
 
   const aiResponse = await chat({
     history,
     userMessage: promptInput,
-    contactName: fullName,
+    contactName: leadName,
+    hasName,
     slotsContext
   });
 
   let replyText = aiResponse.text;
   const action = aiResponse.action;
+
+  if (action.captured_name && !hasName) {
+    const cleanName = String(action.captured_name).trim().slice(0, 80);
+    if (hasRealName(cleanName)) {
+      await updateConversation(contactId, { full_name: cleanName });
+      console.log(`[${cleanName}] nombre capturado y guardado`);
+    }
+  }
 
   if (action.propose_slots && availableSlots.length === 0) {
     availableSlots = await getNextSlots({ daysAhead: 7, take: 3 });
@@ -182,7 +197,16 @@ async function runTurn({ conversation, contactId, fullName, userMessage }) {
     metadata: { action, appointment_id: appointmentId, appointment_at: appointmentAt, trigger: isInitial }
   });
 
-  console.log(`[${fullName}] ${isInitial ? '🟢 trigger' : `in: "${userMessage}"`} → out: "${replyText}"`);
+  const logName = action.captured_name || leadName || 'Lead';
+  console.log(`[${logName}] ${isInitial ? '🟢 trigger' : `in: "${userMessage}"`} → out: "${replyText}"`);
+}
+
+function hasRealName(name) {
+  if (!name) return false;
+  const clean = String(name).trim();
+  if (clean.length < 3) return false;
+  const lower = clean.toLowerCase();
+  return lower !== 'lead' && lower !== 'unknown' && lower !== 'sin nombre';
 }
 
 const PORT = process.env.PORT || 3000;

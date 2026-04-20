@@ -53,10 +53,13 @@ async function sendFollowup(conv) {
     ? `[SISTEMA: El lead ${fullName} no ha respondido desde hace ${FOLLOWUP_DELAY_MIN}+ minutos. Revisa la conversación y manda un recordatorio breve, conversacional y cercano. NO repitas lo mismo. Si ya propusiste horarios, recuérdaselos. Mantén el tono de Alejandra.]`
     : `[SISTEMA: Segundo y último recordatorio para ${fullName}. Sigue sin responder. Manda un mensaje breve y cordial ofreciendo que te avise cuando pueda platicar. Sin presión.]`;
 
+  const hasName = !!(fullName && String(fullName).trim().length >= 3 && fullName.toLowerCase() !== 'lead');
+
   const aiResponse = await chat({
     history,
     userMessage: nudgePrompt,
     contactName: fullName,
+    hasName,
     slotsContext: ''
   });
 
