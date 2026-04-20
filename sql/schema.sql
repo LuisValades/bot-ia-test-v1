@@ -26,6 +26,11 @@ create table if not exists conversations (
 create index if not exists idx_conversations_contact on conversations(contact_id);
 create index if not exists idx_conversations_stage on conversations(stage);
 
+-- Follow-up automático: contador y timestamp del último nudge
+alter table conversations add column if not exists followup_count int default 0;
+alter table conversations add column if not exists followup_at timestamptz;
+create index if not exists idx_conversations_followup on conversations(stage, last_msg_at, followup_count);
+
 -- ===== messages =====
 -- Log completo de cada SMS (in/out) y la respuesta IA
 create table if not exists messages (

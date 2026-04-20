@@ -1,9 +1,11 @@
 import './env.js';
 import express from 'express';
+import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
 import { sendSMS, getContact, createAppointment } from './ghl.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, findSlotMatch } from './calendar.js';
+import { runFollowups } from './followup.js';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -190,3 +192,17 @@ app.listen(PORT, () => {
   console.log(`Reply:    POST http://localhost:${PORT}/webhook/ghl/reply`);
   console.log(`Pipeline: ${process.env.GHL_TRIGGER_PIPELINE_NAME} → ${process.env.GHL_TRIGGER_STAGE_NAME}`);
 });
+
+let followupRunning = false;
+cron.schedule('* * * * *', async () => {
+  if (followupRunning) return;
+  followupRunning = true;
+  try {
+    await runFollowups();
+  } catch (err) {
+    console.error('[followup] tick error:', err.message);
+  } finally {
+    followupRunning = false;
+  }
+});
+console.log(`Followups: cada 1 min (umbral ${process.env.FOLLOWUP_DELAY_MIN || 5} min, máx ${process.env.MAX_FOLLOWUPS || 2} por lead)`);
