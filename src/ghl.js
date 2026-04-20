@@ -135,3 +135,53 @@ export async function getContactAppointments(contactId) {
     return [];
   }
 }
+
+export async function addContactTags(contactId, tags) {
+  if (!tags || tags.length === 0) return null;
+  try {
+    const { data } = await ghlV2.post(`/contacts/${contactId}/tags`, { tags });
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] addContactTags ${contactId} falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+export async function removeContactTags(contactId, tags) {
+  if (!tags || tags.length === 0) return null;
+  try {
+    const { data } = await ghlV2.delete(`/contacts/${contactId}/tags`, { data: { tags } });
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] removeContactTags ${contactId} falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+export async function findContactOpportunity(contactId) {
+  try {
+    const { data } = await ghlV2.get('/opportunities/search', {
+      params: { location_id: LOCATION_ID, contact_id: contactId, limit: 10 }
+    });
+    const opps = data?.opportunities || [];
+    if (opps.length === 0) return null;
+    opps.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    return opps[0];
+  } catch (err) {
+    console.warn(`[ghl] findContactOpportunity ${contactId} falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+export async function moveOpportunityStage({ opportunityId, pipelineId, stageId }) {
+  try {
+    const { data } = await ghlV2.put(`/opportunities/${opportunityId}`, {
+      pipelineId,
+      pipelineStageId: stageId
+    });
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] moveOpportunityStage ${opportunityId} falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}

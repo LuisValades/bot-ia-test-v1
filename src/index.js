@@ -2,7 +2,7 @@ import './env.js';
 import express from 'express';
 import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
-import { sendSMS, getContact, getUser, createAppointment, createContactNote } from './ghl.js';
+import { sendSMS, getContact, getUser, createAppointment, createContactNote, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
 import { runFollowups } from './followup.js';
@@ -130,8 +130,21 @@ async function handleReply(payload) {
     fullName
   });
 
-  if (conversation.stage === 'finalizado') {
-    console.log(`[${fullName}] conversación finalizada, no responde`);
+  if (conversation.stage === 'finalizado' || conversation.stage === 'escalado') {
+    console.log(`[${fullName}] conversación ${conversation.stage}, no responde (ya pasó al asesor humano)`);
+    return;
+  }
+
+  if (userMessage && detectEscalationIntent(userMessage)) {
+    console.log(`[${fullName}] lead pidió atención humana explícitamente, escalando`);
+    await escalateToAdvisor({
+      contactId,
+      conversationId: conversation.id,
+      leadName: conversation.full_name || fullName,
+      advisor,
+      reason: 'lead-requested',
+      triggeringMessage: userMessage
+    });
     return;
   }
 
@@ -258,6 +271,19 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   let replyText = aiResponse.text;
   const action = aiResponse.action;
   console.log(`[${leadName || 'Lead'}] ACTION:`, JSON.stringify(action));
+
+  if (action.needs_escalation) {
+    console.log(`[${leadName || 'Lead'}] AI pidió escalación`);
+    await escalateToAdvisor({
+      contactId,
+      conversationId: conversation.id,
+      leadName: leadName || fullName,
+      advisor,
+      reason: 'ai-cannot-answer',
+      triggeringMessage: userMessage
+    });
+    return;
+  }
 
   if (!action.book_slot && !isInitial && availableSlots.length > 0) {
     const rescuedSlot = tryMatchUserOptionNumber(userMessage, availableSlots) || tryMatchUserTimeToSlot(userMessage, availableSlots);
@@ -399,6 +425,91 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const ESCALATION_KEYWORDS = [
+  'hablar con asesor', 'hablar con un asesor', 'con un asesor',
+  'hablar asesor', 'quiero asesor', 'dame un asesor',
+  'asesor humano', 'atencion humana', 'atención humana',
+  'una persona', 'persona real', 'alguien real',
+  'humano', 'un humano',
+  'atencion personal', 'atención personal',
+  'atencion personalizada', 'atención personalizada',
+  'no quiero bot', 'eres un bot', 'eres bot', 'sos bot',
+  'quiero hablar con alguien', 'quiero atencion',
+  'quiero atención', 'ayuda humana',
+  'hablame un asesor', 'háblame un asesor'
+];
+
+function detectEscalationIntent(message) {
+  if (!message) return false;
+  const text = String(message).toLowerCase().trim();
+  if (text.length === 0) return false;
+  return ESCALATION_KEYWORDS.some(kw => text.includes(kw));
+}
+
+async function escalateToAdvisor({ contactId, conversationId, leadName, advisor, reason, triggeringMessage }) {
+  const farewellMsg = 'Va, te paso con un asesor.\n\nTe contacta en unos minutos directamente.\n\n¡Gracias por escribir! 🙌';
+  const escalationTag = (process.env.GHL_ESCALATION_TAG || 'atencion-asesor').trim();
+  const botTag = (process.env.GHL_BOT_TAG || 'bot ia').trim();
+  const escalationStageId = process.env.GHL_ESCALATION_STAGE_ID;
+  const escalationPipelineId = process.env.GHL_ESCALATION_PIPELINE_ID || process.env.GHL_TRIGGER_PIPELINE_ID;
+
+  try {
+    await sleep(getNaturalDelay());
+    const sent = await sendSMS({ contactId, message: farewellMsg });
+    await logMessage({
+      contactId,
+      conversationId,
+      direction: 'out',
+      body: farewellMsg,
+      ghlMessageId: sent?.messageId || sent?.id,
+      metadata: { escalation: true, reason, triggering_message: triggeringMessage }
+    });
+  } catch (err) {
+    console.error(`[${leadName}] fallo enviando SMS de despedida:`, err.response?.data || err.message);
+  }
+
+  await updateConversation(contactId, { stage: 'escalado' }).catch(err =>
+    console.error('updateConversation escalado err:', err.message)
+  );
+
+  await Promise.all([
+    addContactTags(contactId, [escalationTag]),
+    removeContactTags(contactId, [botTag])
+  ]);
+
+  if (escalationStageId && escalationPipelineId) {
+    const opp = await findContactOpportunity(contactId);
+    if (opp?.id) {
+      await moveOpportunityStage({
+        opportunityId: opp.id,
+        pipelineId: escalationPipelineId,
+        stageId: escalationStageId
+      });
+      console.log(`[${leadName}] oportunidad movida a etapa de escalación ${escalationStageId}`);
+    } else {
+      console.warn(`[${leadName}] no encontré oportunidad para mover a escalación`);
+    }
+  }
+
+  try {
+    const noteBody = [
+      '⚠️ ESCALACIÓN AUTOMÁTICA — El lead pide atención humana.',
+      '',
+      `Lead: ${leadName || '(sin nombre)'}`,
+      `Asesor asignado: ${advisor?.name || '(sin asesor)'}`,
+      `Razón: ${reason === 'lead-requested' ? 'el lead pidió hablar con humano' : 'el bot no pudo responder'}`,
+      triggeringMessage ? `Último mensaje del lead: "${triggeringMessage.slice(0, 300)}"` : '',
+      '',
+      '— Alejandra dejó de responder. Toma tú la conversación.'
+    ].filter(Boolean).join('\n');
+    await createContactNote({ contactId, body: noteBody });
+  } catch (err) {
+    console.error(`[${leadName}] fallo creando nota de escalación:`, err.message);
+  }
+
+  console.log(`[${leadName}] ✅ escalación ejecutada. Tags: +${escalationTag}, -${botTag}. Bot no vuelve a responder.`);
 }
 
 function getNaturalDelay() {

@@ -175,7 +175,7 @@ REGLAS INVIOLABLES:
 
 function extractAction(raw) {
   const match = raw.match(/\[ACTION\](.*?)\[\/ACTION\]/s);
-  const fallback = { intent: 'desconocido', next_stage: 'calificando', propose_slots: false, book_slot: null, captured_name: null, profile_updates: {} };
+  const fallback = { intent: 'desconocido', next_stage: 'calificando', propose_slots: false, book_slot: null, captured_name: null, profile_updates: {}, needs_escalation: false };
   if (!match) return fallback;
   try {
     const parsed = JSON.parse(match[1]);
