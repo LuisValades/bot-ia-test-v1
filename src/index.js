@@ -434,6 +434,36 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+export async function sendMultiPartSMS({ contactId, message, leadName, firstDelayMs = null }) {
+  const chunks = String(message || '')
+    .split(/\n{2,}/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (chunks.length === 0) return null;
+
+  const firstDelay = firstDelayMs ?? getNaturalDelay();
+  const chunkMin = parseInt(process.env.CHUNK_DELAY_MIN_MS || '1800', 10);
+  const chunkMax = parseInt(process.env.CHUNK_DELAY_MAX_MS || '3500', 10);
+
+  const sentIds = [];
+  for (let i = 0; i < chunks.length; i++) {
+    if (i === 0) {
+      console.log(`[${leadName || 'Lead'}] enviando ${chunks.length} SMS (primer chunk en ${firstDelay}ms)`);
+      await sleep(firstDelay);
+    } else {
+      const chunkDelay = chunkMin + Math.floor(Math.random() * Math.max(1, chunkMax - chunkMin));
+      await sleep(chunkDelay);
+    }
+    try {
+      const sent = await sendSMS({ contactId, message: chunks[i] });
+      sentIds.push(sent?.messageId || sent?.id || null);
+    } catch (err) {
+      console.error(`[${leadName || 'Lead'}] fallo enviando chunk ${i + 1}/${chunks.length}:`, err.response?.data || err.message);
+    }
+  }
+  return { ghlMessageId: sentIds[0] || null, allIds: sentIds, chunks };
+}
+
 const ESCALATION_KEYWORDS = [
   'hablar con asesor', 'hablar con un asesor', 'con un asesor',
   'hablar asesor', 'quiero asesor', 'dame un asesor',
