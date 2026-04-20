@@ -24,22 +24,48 @@ app.get('/health', (_req, res) => res.json({
   }
 }));
 
+const contactLocks = new Map();
+
+function serializePerContact(contactId, task) {
+  if (!contactId) return task();
+  const prev = contactLocks.get(contactId) || Promise.resolve();
+  const chained = prev.then(() => task()).catch(err => {
+    console.error(`[lock] ${contactId} task err:`, err.response?.data || err.message);
+  });
+  contactLocks.set(contactId, chained);
+  chained.finally(() => {
+    if (contactLocks.get(contactId) === chained) contactLocks.delete(contactId);
+  });
+  return chained;
+}
+
+function extractContactId(payload) {
+  const body = payload?.body || payload || {};
+  return body.contact_id || body.contactId || body.contact?.id || null;
+}
+
 app.post('/webhook/ghl/trigger', async (req, res) => {
   res.status(200).json({ received: true });
-  try {
-    await handleTrigger(req.body);
-  } catch (err) {
-    console.error('Error en trigger:', err.response?.data || err.message);
-  }
+  const contactId = extractContactId(req.body);
+  serializePerContact(contactId, async () => {
+    try {
+      await handleTrigger(req.body);
+    } catch (err) {
+      console.error('Error en trigger:', err.response?.data || err.message);
+    }
+  });
 });
 
 app.post('/webhook/ghl/reply', async (req, res) => {
   res.status(200).json({ received: true });
-  try {
-    await handleReply(req.body);
-  } catch (err) {
-    console.error('Error en reply:', err.response?.data || err.message);
-  }
+  const contactId = extractContactId(req.body);
+  serializePerContact(contactId, async () => {
+    try {
+      await handleReply(req.body);
+    } catch (err) {
+      console.error('Error en reply:', err.response?.data || err.message);
+    }
+  });
 });
 
 async function handleTrigger(payload) {
@@ -121,7 +147,6 @@ async function handleReply(payload) {
   const phone = contact?.phone || body.phone;
   const advisor = await resolveAdvisor(contact);
   const tags = Array.isArray(contact?.tags) ? contact.tags : [];
-  const isReactivation = detectReactivation(tags);
 
   const conversation = await getOrCreateConversation({
     contactId,
@@ -160,7 +185,8 @@ async function handleReply(payload) {
     console.log(`[${fullName}] ${attachments.length} attachment(s): ${kinds}`);
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor, tags, isReactivation });
+  // isReactivation solo aplica al saludo inicial (trigger/retake), no a replies ya en conversación
+  await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor, tags, isReactivation: false });
 }
 
 async function resolveAdvisor(contact) {
