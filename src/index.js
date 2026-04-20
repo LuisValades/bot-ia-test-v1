@@ -64,8 +64,9 @@ async function handleTrigger(payload) {
 
 async function handleReply(payload) {
   const body = payload.body || payload;
+  console.log('[reply] payload keys:', Object.keys(body), 'msg type:', typeof body.message);
   const contactId = body.contact_id || body.contactId || body.contact?.id;
-  const userMessage = (body.message || body.body || body.last_message?.body || '').trim();
+  const userMessage = coerceMessage(body.message ?? body.body ?? body.last_message?.body ?? '');
   const direction = body.direction || body.last_message?.direction || 'inbound';
   const rawAttachments = parseAttachments(body.attachments || body.last_message?.attachments);
 
@@ -96,6 +97,18 @@ async function handleReply(payload) {
   }
 
   await runTurn({ conversation, contactId, fullName, userMessage, attachments });
+}
+
+function coerceMessage(val) {
+  if (val == null) return '';
+  if (typeof val === 'string') return val.trim();
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val).trim();
+  if (typeof val === 'object') {
+    const candidate = val.body || val.text || val.message || val.content || '';
+    if (typeof candidate === 'string') return candidate.trim();
+    return '';
+  }
+  return String(val).trim();
 }
 
 function parseAttachments(raw) {
