@@ -1,0 +1,23 @@
+{
+  "name": "bot-alejandra-sms-ghl",
+  "version": "0.1.0",
+  "description": "Bot SMS Alejandra - IA conversacional para CrediExpres en GoHighLevel",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test:ghl": "node scripts/test-ghl.js",
+    "test:ai": "node scripts/test-ai.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "openai": "^4.67.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
