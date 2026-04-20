@@ -130,8 +130,14 @@ async function handleReply(payload) {
     fullName
   });
 
-  if (conversation.stage === 'finalizado' || conversation.stage === 'escalado') {
-    console.log(`[${fullName}] conversación ${conversation.stage}, no responde (ya pasó al asesor humano)`);
+  if (conversation.stage === 'finalizado' || conversation.stage === 'escalado' || conversation.stage === 'bloqueado') {
+    console.log(`[${fullName}] conversación ${conversation.stage}, no responde`);
+    return;
+  }
+
+  if (userMessage && detectBlockIntent(userMessage)) {
+    console.log(`[${fullName}] lead pidió no ser contactado, marcando bloqueado`);
+    await handleBlockRequest({ contactId, conversationId: conversation.id, leadName: conversation.full_name || fullName });
     return;
   }
 
@@ -401,10 +407,11 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     });
   }
 
-  const delayMs = getNaturalDelay();
-  console.log(`[${leadName || fullName}] esperando ${delayMs}ms (respuesta natural) antes de enviar SMS`);
-  await sleep(delayMs);
-  const sent = await sendSMS({ contactId, message: replyText });
+  const sendResult = await sendMultiPartSMS({
+    contactId,
+    message: replyText,
+    leadName: leadName || fullName
+  });
 
   const usage = aiResponse.usage || {};
   await logMessage({
@@ -415,8 +422,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     aiModel: aiResponse.model,
     aiTokensIn: usage.prompt_tokens,
     aiTokensOut: usage.completion_tokens,
-    ghlMessageId: sent?.messageId || sent?.id,
-    metadata: { action, appointment_id: appointmentId, appointment_at: appointmentAt, trigger: isInitial }
+    ghlMessageId: sendResult?.ghlMessageId,
+    metadata: { action, appointment_id: appointmentId, appointment_at: appointmentAt, trigger: isInitial, chunks_count: sendResult?.chunks?.length }
   });
 
   const logName = action.captured_name || leadName || 'Lead';
@@ -448,6 +455,59 @@ function detectEscalationIntent(message) {
   return ESCALATION_KEYWORDS.some(kw => text.includes(kw));
 }
 
+const BLOCK_KEYWORDS = [
+  'no me contacten', 'no me escriban', 'no me escriba',
+  'no quiero que me contacten', 'no quiero que me escriban',
+  'dejenme en paz', 'déjenme en paz', 'dejame en paz', 'déjame en paz',
+  'bloqueame', 'bloquéame', 'bloqueenme', 'bloquéenme',
+  'no me hables mas', 'no me hables más', 'no me hablen mas', 'no me hablen más',
+  'retirenme', 'retírenme', 'borrenme', 'bórrenme',
+  'eliminen mi numero', 'eliminen mi número',
+  'quitenme', 'quítenme',
+  'no me llamen mas', 'no me llamen más',
+  'no quiero saber nada', 'ya no quiero nada',
+  'dejen de mandarme', 'paren de escribirme',
+  'unsubscribe', 'stop'
+];
+
+function detectBlockIntent(message) {
+  if (!message) return false;
+  const text = String(message).toLowerCase().trim();
+  if (text.length === 0) return false;
+  return BLOCK_KEYWORDS.some(kw => text.includes(kw));
+}
+
+async function handleBlockRequest({ contactId, conversationId, leadName }) {
+  const msg = 'Entendido, no te contactamos más.\n\nSi algún día quieres retomar, avísanos y con gusto te apoyamos.\n\nGracias por tu tiempo 🙏';
+  try {
+    const result = await sendMultiPartSMS({ contactId, message: msg, leadName });
+    await logMessage({
+      contactId,
+      conversationId,
+      direction: 'out',
+      body: msg,
+      ghlMessageId: result?.ghlMessageId,
+      metadata: { blocked: true, chunks_count: result?.chunks?.length }
+    });
+  } catch (err) {
+    console.error(`[${leadName}] fallo enviando confirmación de bloqueo:`, err.response?.data || err.message);
+  }
+  await updateConversation(contactId, { stage: 'bloqueado' });
+  await Promise.all([
+    addContactTags(contactId, ['no-contactar']),
+    removeContactTags(contactId, [process.env.GHL_BOT_TAG || 'bot ia'])
+  ]);
+  try {
+    await createContactNote({
+      contactId,
+      body: `🛑 LEAD SOLICITÓ NO SER CONTACTADO\n\nEl bot dejó de responder automáticamente. Respeta su decisión.\n\n— Bot Alejandra`
+    });
+  } catch (err) {
+    console.error(`[${leadName}] fallo creando nota de bloqueo:`, err.message);
+  }
+  console.log(`[${leadName}] 🛑 lead bloqueado. No responde más.`);
+}
+
 async function escalateToAdvisor({ contactId, conversationId, leadName, advisor, reason, triggeringMessage }) {
   const farewellMsg = 'Va, te paso con un asesor.\n\nTe contacta en unos minutos directamente.\n\n¡Gracias por escribir! 🙌';
   const escalationTag = (process.env.GHL_ESCALATION_TAG || 'atencion-asesor').trim();
@@ -456,15 +516,14 @@ async function escalateToAdvisor({ contactId, conversationId, leadName, advisor,
   const escalationPipelineId = process.env.GHL_ESCALATION_PIPELINE_ID || process.env.GHL_TRIGGER_PIPELINE_ID;
 
   try {
-    await sleep(getNaturalDelay());
-    const sent = await sendSMS({ contactId, message: farewellMsg });
+    const result = await sendMultiPartSMS({ contactId, message: farewellMsg, leadName });
     await logMessage({
       contactId,
       conversationId,
       direction: 'out',
       body: farewellMsg,
-      ghlMessageId: sent?.messageId || sent?.id,
-      metadata: { escalation: true, reason, triggering_message: triggeringMessage }
+      ghlMessageId: result?.ghlMessageId,
+      metadata: { escalation: true, reason, triggering_message: triggeringMessage, chunks_count: result?.chunks?.length }
     });
   } catch (err) {
     console.error(`[${leadName}] fallo enviando SMS de despedida:`, err.response?.data || err.message);
