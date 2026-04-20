@@ -57,22 +57,21 @@ Lead con nombre dice "quiero liquidez":
 Lead acepta horario:
 "Listo Juan, te agendo el martes 1pm. Te llega confirmación 📩 [ACTION]{\\"intent\\":\\"liquidez\\",\\"next_stage\\":\\"confirmado\\",\\"propose_slots\\":false,\\"book_slot\\":\\"2026-04-21T13:00:00-06:00\\",\\"captured_name\\":null}[/ACTION]"`;
 
-export async function chat({ history, userMessage, contactName, hasName, slotsContext, availableSlotsIso = [], attachments = [] }) {
+export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotPairs = [], availableSlotsIso = [], attachments = [] }) {
   const nameContext = hasName && contactName
     ? `Nombre del lead (YA lo conoces, úsalo): ${contactName}`
     : `NO conoces el nombre del lead todavía. Si es tu primer mensaje o aún no lo ha dicho, PREGUNTA el nombre antes de avanzar. Cuando lo dé, pon captured_name en el ACTION.`;
 
   const finalUserContent = buildUserContent(userMessage, attachments);
 
-  const isoSlotsMessage = availableSlotsIso && availableSlotsIso.length > 0
-    ? `Lista EXACTA de slots disponibles (ISO 8601). CUANDO el lead acepte un horario, "book_slot" DEBE ser uno de estos strings exactos, copiado tal cual (no inventes fechas ni offsets): ${JSON.stringify(availableSlotsIso)}`
+  const pairsMessage = slotPairs && slotPairs.length > 0
+    ? `MAPEO DE SLOTS DISPONIBLES — cuando el lead acepte un horario, copia EXACTAMENTE el ISO de este mapeo al book_slot (no inventes fechas). Formato: "texto humano" ↔ "ISO":\n${slotPairs.map(p => `- "${p.human}" ↔ "${p.iso}"`).join('\n')}\n\nSi el lead dice algo ambiguo como "a las 8" o "tarde", pregunta cuál de los horarios específicos prefiere antes de agendar.`
     : null;
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'system', content: nameContext },
-    ...(slotsContext ? [{ role: 'system', content: `Slots disponibles próximos (formato humano para mostrarle al lead): ${slotsContext}` }] : []),
-    ...(isoSlotsMessage ? [{ role: 'system', content: isoSlotsMessage }] : []),
+    ...(pairsMessage ? [{ role: 'system', content: pairsMessage }] : (slotsContext ? [{ role: 'system', content: `Slots disponibles próximos: ${slotsContext}` }] : [])),
     ...(attachments?.length
       ? [{ role: 'system', content: 'El lead envió archivos adjuntos. Si son imágenes (INE, comprobantes, propiedad, etc.) o PDFs, LÉELOS y coméntalos brevemente en tu respuesta. Si hay audio, ya viene transcrito en el mensaje.' }]
       : []),

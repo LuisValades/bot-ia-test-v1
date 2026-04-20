@@ -26,6 +26,10 @@ export function formatSlotsForLead(slots, max = 3) {
   return slots.slice(0, max).map(formatSlotEs).join(', ');
 }
 
+export function formatSlotPairs(slots, max = 6) {
+  return slots.slice(0, max).map(iso => ({ human: formatSlotEs(iso), iso }));
+}
+
 export function findSlotMatch(requestedIso, availableSlots) {
   if (!requestedIso) return null;
   const target = new Date(requestedIso).getTime();

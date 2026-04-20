@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
 import { sendSMS, getContact, createAppointment } from './ghl.js';
 import { chat } from './ai.js';
-import { getNextSlots, formatSlotsForLead, findSlotMatch } from './calendar.js';
+import { getNextSlots, formatSlotsForLead, formatSlotPairs, findSlotMatch } from './calendar.js';
 import { runFollowups } from './followup.js';
 import { processAttachments } from './media.js';
 
@@ -158,10 +158,12 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   const history = await getRecentMessages(contactId, 100);
 
   let availableSlots = [];
+  let slotPairs = [];
   let slotsContext = '';
   const activeStage = !['confirmado', 'finalizado'].includes(conversation.stage);
   if (activeStage) {
     availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
+    slotPairs = formatSlotPairs(availableSlots, 6);
     slotsContext = formatSlotsForLead(availableSlots, 6);
   }
 
@@ -177,6 +179,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     contactName: leadName,
     hasName,
     slotsContext,
+    slotPairs,
     availableSlotsIso: availableSlots,
     attachments: isInitial ? [] : attachments
   });
