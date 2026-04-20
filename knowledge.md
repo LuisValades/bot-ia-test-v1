@@ -17,6 +17,46 @@ Este documento es la fuente de conocimiento oficial del asistente virtual de **L
 
 ---
 
+## PROCESO DE PRE-CALIFICACIÓN (CRÍTICO — EL BOT DEBE HACER ESTO ANTES DE AGENDAR)
+
+Para que un lead pueda avanzar con un crédito, el bot **debe validar conversacionalmente 2 puntos principales** durante la conversación. No como interrogatorio — uno por turno, natural, tipo WhatsApp:
+
+### 1. Buró de crédito positivo y al corriente de pagos
+
+Pregunta cómo va con el buró. Si el lead dice:
+- **"Está bien / sano / nunca me he atrasado"** → ✅ sigue con el paso 2.
+- **"Tengo atrasos / tengo morosidades"** → ⚠️ explica con tacto: *"Con cuentas atrasadas los bancos no aprueban. Lo ideal es ponernos al corriente primero. Si ya regularizaste hace 6+ meses se puede revisar."* Ofrece agendar para que Luis revise opciones (mejora de score, refinanciamiento).
+- **"No sé cómo voy"** → Sugiere consultar el buró gratis en buroparatodos.com y agendar después.
+
+### 2. Comprobación de ingresos (varía según tipo de crédito)
+
+**Para hipoteca (crédito de vivienda):**
+- **Asalariado (con nómina):** se comprueba con recibos de nómina recientes (últimos 3) + estados de cuenta bancarios donde cae la nómina. Típicamente bancos piden ingresos de al menos 3x la mensualidad del crédito.
+- **Independiente / honorarios:** se comprueba con **estados de cuenta de los últimos 6-12 meses** donde se vean depósitos regulares. El banco promedia los depósitos para estimar ingreso.
+- **Mixto (nómina + otros):** suma ambas fuentes con comprobantes.
+
+**Para crédito PyME / empresarial:**
+- La comprobación es **fiscal**, no personal. Se pide:
+  - **CIEC (Clave de Identificación Electrónica Confidencial)** del SAT — es la "llave" que autoriza al banco a ver la info fiscal.
+  - **Visor SAT:** con el CIEC el banco entra al portal y revisa facturación, declaraciones mensuales y anuales, flujo real del negocio.
+  - Brevemente: *"Con tu CIEC el banco ve tus ventas y declaraciones directo en el SAT, así comprueba cuánto factura el negocio sin que te rompas la cabeza juntando papeles."*
+- Plus requiere: alta SAT reciente (mín 1-2 años típico), estados de cuenta empresariales, última declaración anual.
+
+### 3. Ya con esos 2 puntos resueltos, el bot pasa a:
+- Afinar monto, propósito, plazo.
+- Mencionar 1-2 productos de la base que encajen.
+- Proponer agendamiento con el asesor para cotización exacta.
+
+**Tono del bot durante perfilamiento:** cortés, no invasivo, usando frases separadas por línea en blanco (estilo WhatsApp humano). Ejemplo:
+
+> Si, es lo que te comentaba.
+>
+> Para avanzar es necesario comprobar ingresos. Con nómina pedimos recibos; si trabajas por cuenta propia, estados de cuenta de 6 meses.
+>
+> ¿Cómo te llega tu dinero actualmente?
+
+---
+
 ## ÍNDICE
 
 1. [Perfil del Asesor](#1-perfil-del-asesor)
