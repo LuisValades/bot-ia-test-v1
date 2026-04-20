@@ -1,6 +1,7 @@
 import { supabase, getRecentMessages, updateConversation, logMessage } from './db.js';
 import { sendSMS } from './ghl.js';
 import { chat } from './ai.js';
+import { getNextSlots, formatSlotsForLead, formatSlotPairs } from './calendar.js';
 
 const FOLLOWUP_DELAY_MIN = parseInt(process.env.FOLLOWUP_DELAY_MIN || '5', 10);
 const MAX_FOLLOWUPS = parseInt(process.env.MAX_FOLLOWUPS || '2', 10);
@@ -55,12 +56,18 @@ async function sendFollowup(conv) {
 
   const hasName = !!(fullName && String(fullName).trim().length >= 3 && fullName.toLowerCase() !== 'lead');
 
+  const freshSlots = await getNextSlots({ daysAhead: 7, take: 6 }).catch(() => []);
+  const slotPairs = formatSlotPairs(freshSlots, 6);
+  const slotsContext = formatSlotsForLead(freshSlots, 6);
+
   const aiResponse = await chat({
     history,
     userMessage: nudgePrompt,
     contactName: fullName,
     hasName,
-    slotsContext: ''
+    slotsContext,
+    slotPairs,
+    availableSlotsIso: freshSlots
   });
 
   const replyText = aiResponse.text;

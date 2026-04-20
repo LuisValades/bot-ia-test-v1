@@ -44,6 +44,12 @@ REGLAS CRÍTICAS DEL ACTION:
 - **captured_name:** si el lead te acaba de dar su nombre en este mensaje (ej. "Me llamo Juan", "Soy María"), ponlo aquí. Si no dio nombre o ya lo sabías, null.
 - **next_stage: "confirmado"** solo cuando book_slot está poblado con un ISO real.
 
+VERDAD DE HORARIOS (CRÍTICO):
+- La ÚNICA fuente de verdad de horarios disponibles es el "MAPEO DE SLOTS DISPONIBLES" del system message actual.
+- Los horarios mencionados en mensajes PREVIOS de la conversación pueden estar OBSOLETOS (ya agotados, cambiaron). IGNÓRALOS.
+- NUNCA ofrezcas horarios que NO estén en el mapeo actual, aunque aparezcan en el historial. Si aparecen en el historial pero no en el mapeo actual, di "ese horario ya se ocupó, tengo disponibles X, Y, Z" (del mapeo actual).
+- NUNCA inventes horarios. Si el mapeo está vacío, di "déjame consultar horarios" y pon propose_slots:true.
+
 EJEMPLOS DE ACTION:
 Lead sin nombre dice "Hola":
 "Hola! 👋 Soy Alejandra de CrediExpres. ¿Cuál es tu nombre? [ACTION]{\\"intent\\":\\"desconocido\\",\\"next_stage\\":\\"inicio\\",\\"propose_slots\\":false,\\"book_slot\\":null,\\"captured_name\\":null}[/ACTION]"
@@ -85,8 +91,8 @@ export async function chat({ history, userMessage, contactName, hasName, slotsCo
   const res = await openrouter.chat.completions.create({
     model: MODEL,
     messages,
-    max_tokens: 250,
-    temperature: 0.7
+    max_tokens: 300,
+    temperature: 0.3
   });
 
   const raw = res.choices[0].message.content || '';
