@@ -91,3 +91,47 @@ export async function createContactNote({ contactId, body }) {
   const { data } = await ghlV2.post(`/contacts/${contactId}/notes`, { body });
   return data;
 }
+
+export async function searchContactConversations(contactId) {
+  try {
+    const { data } = await ghlV2.get('/conversations/search', {
+      params: { locationId: LOCATION_ID, contactId, limit: 20 }
+    });
+    return data?.conversations || [];
+  } catch (err) {
+    console.warn('[ghl] searchContactConversations falló:', err.response?.data?.message || err.message);
+    return [];
+  }
+}
+
+export async function getConversationMessages(conversationId, limit = 100) {
+  try {
+    const { data } = await ghlV2.get(`/conversations/${conversationId}/messages`, {
+      params: { limit }
+    });
+    return data?.messages?.messages || data?.messages || [];
+  } catch (err) {
+    console.warn(`[ghl] getConversationMessages ${conversationId} falló:`, err.response?.data?.message || err.message);
+    return [];
+  }
+}
+
+export async function getContactNotes(contactId) {
+  try {
+    const { data } = await ghlV2.get(`/contacts/${contactId}/notes`);
+    return data?.notes || [];
+  } catch (err) {
+    console.warn(`[ghl] getContactNotes ${contactId} falló:`, err.response?.data?.message || err.message);
+    return [];
+  }
+}
+
+export async function getContactAppointments(contactId) {
+  try {
+    const { data } = await ghlV2.get(`/contacts/${contactId}/appointments`);
+    return data?.events || data?.appointments || [];
+  } catch (err) {
+    console.warn(`[ghl] getContactAppointments ${contactId} falló:`, err.response?.data?.message || err.message);
+    return [];
+  }
+}

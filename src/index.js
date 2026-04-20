@@ -7,6 +7,10 @@ import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
 import { runFollowups } from './followup.js';
 import { processAttachments } from './media.js';
+import { hydrateFromGHL, persistGHLHistory } from './hydration.js';
+import { supabase } from './db.js';
+
+const RETAKE_DELAY_MIN = parseInt(process.env.RETAKE_DELAY_MIN || '15', 10);
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -71,7 +75,20 @@ async function handleTrigger(payload) {
     });
     conversation.stage = 'inicio';
     conversation.followup_count = 0;
-    console.log(`[${fullName}] reactivación detectada desde stage ${conversation.stage}, reseteando a inicio`);
+    console.log(`[${fullName}] reactivación detectada, reseteando a inicio`);
+  }
+
+  if (isReactivation) {
+    try {
+      const hydration = await hydrateFromGHL(contactId);
+      await persistGHLHistory({ contactId, conversationId: conversation.id, hydration });
+      const retakeAt = new Date(Date.now() + RETAKE_DELAY_MIN * 60 * 1000).toISOString();
+      await updateConversation(contactId, { retake_scheduled_at: retakeAt });
+      console.log(`[${fullName}] reactivación: historial extraído, retake programado para ${retakeAt}`);
+      return;
+    } catch (err) {
+      console.error(`[${fullName}] hydration falló, arranco como lead nuevo:`, err.response?.data || err.message);
+    }
   }
 
   await runTurn({ conversation, contactId, fullName, userMessage: '__TRIGGER_INICIAL__', advisor, tags, isReactivation });
@@ -449,16 +466,58 @@ app.listen(PORT, () => {
   console.log(`Pipeline: ${process.env.GHL_TRIGGER_PIPELINE_NAME} → ${process.env.GHL_TRIGGER_STAGE_NAME}`);
 });
 
-let followupRunning = false;
+let cronRunning = false;
 cron.schedule('* * * * *', async () => {
-  if (followupRunning) return;
-  followupRunning = true;
+  if (cronRunning) return;
+  cronRunning = true;
   try {
+    await runRetakes();
     await runFollowups();
   } catch (err) {
-    console.error('[followup] tick error:', err.message);
+    console.error('[cron] tick error:', err.message);
   } finally {
-    followupRunning = false;
+    cronRunning = false;
   }
 });
-console.log(`Followups: cada 1 min (umbral ${process.env.FOLLOWUP_DELAY_MIN || 5} min, máx ${process.env.MAX_FOLLOWUPS || 2} por lead)`);
+console.log(`Cron activo: retakes (${RETAKE_DELAY_MIN} min tras reactivación) + followups (umbral ${process.env.FOLLOWUP_DELAY_MIN || 5} min, máx ${process.env.MAX_FOLLOWUPS || 2} por lead)`);
+
+async function runRetakes() {
+  const nowIso = new Date().toISOString();
+  const { data: due, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('stage', 'inicio')
+    .not('retake_scheduled_at', 'is', null)
+    .lte('retake_scheduled_at', nowIso);
+  if (error) { console.error('[retake] query err:', error.message); return; }
+  if (!due || due.length === 0) return;
+
+  for (const conv of due) {
+    try {
+      const { data: claimed } = await supabase
+        .from('conversations')
+        .update({ retake_scheduled_at: null })
+        .eq('contact_id', conv.contact_id)
+        .eq('retake_scheduled_at', conv.retake_scheduled_at)
+        .select('contact_id');
+      if (!claimed || claimed.length === 0) continue;
+
+      const contact = await getContact(conv.contact_id).catch(() => null);
+      const fullName = conv.full_name || contact?.firstName || 'Lead';
+      const advisor = await resolveAdvisor(contact);
+      const tags = Array.isArray(contact?.tags) ? contact.tags : [];
+      console.log(`[${fullName}] retake disparando (reactivación tras ${RETAKE_DELAY_MIN} min)`);
+      await runTurn({
+        conversation: { ...conv, retake_scheduled_at: null },
+        contactId: conv.contact_id,
+        fullName,
+        userMessage: '__TRIGGER_INICIAL__',
+        advisor,
+        tags,
+        isReactivation: true
+      });
+    } catch (err) {
+      console.error(`[retake] ${conv.contact_id} err:`, err.response?.data || err.message);
+    }
+  }
+}

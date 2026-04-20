@@ -31,6 +31,12 @@ alter table conversations add column if not exists followup_count int default 0;
 alter table conversations add column if not exists followup_at timestamptz;
 create index if not exists idx_conversations_followup on conversations(stage, last_msg_at, followup_count);
 
+-- Reactivación de leads: timestamp en el que el bot debe retomar la conversación
+-- (se setea cuando el lead entra a la etapa Bot IA con tag de reactivación;
+-- tras extraer historial de GHL, esperamos X minutos antes de enviar el primer SMS)
+alter table conversations add column if not exists retake_scheduled_at timestamptz;
+create index if not exists idx_conversations_retake on conversations(stage, retake_scheduled_at) where retake_scheduled_at is not null;
+
 -- Perfil de calificación del lead (datos capturados por el bot durante la conversación)
 -- Campos esperados en el JSON:
 --   ingreso_mensual_mxn         (number)  -- ingreso neto mensual aproximado
