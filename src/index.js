@@ -165,6 +165,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
     slotPairs = formatSlotPairs(availableSlots, 6);
     slotsContext = formatSlotsForLead(availableSlots, 6);
+    console.log(`[${leadName || fullName}] slots reales:`, slotsContext);
   }
 
   const promptInput = isInitial

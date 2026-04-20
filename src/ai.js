@@ -71,7 +71,17 @@ export async function chat({ history, userMessage, contactName, hasName, slotsCo
   const finalUserContent = buildUserContent(userMessage, attachments);
 
   const pairsMessage = slotPairs && slotPairs.length > 0
-    ? `MAPEO DE SLOTS DISPONIBLES — cuando el lead acepte un horario, copia EXACTAMENTE el ISO de este mapeo al book_slot (no inventes fechas). Formato: "texto humano" ↔ "ISO":\n${slotPairs.map(p => `- "${p.human}" ↔ "${p.iso}"`).join('\n')}\n\nSi el lead dice algo ambiguo como "a las 8" o "tarde", pregunta cuál de los horarios específicos prefiere antes de agendar.`
+    ? `═══ SLOTS REALES DEL CALENDARIO (ÚNICA VERDAD) ═══
+Estos son los ÚNICOS horarios que puedes ofrecer o agendar. NINGÚN OTRO horario existe. Si ofreces uno que no está en esta lista, el sistema crashea.
+
+${slotPairs.map(p => `• "${p.human}" → ISO: "${p.iso}"`).join('\n')}
+
+REGLAS INVIOLABLES:
+1. NO menciones ni ofrezcas horarios fuera de esta lista, AUNQUE aparezcan en el historial de la conversación (el historial puede tener slots viejos ya caducos).
+2. Cuando ofrezcas opciones al lead, copia el TEXTO HUMANO exacto de esta lista (ej. "miércoles 22 de abril a las 10:00am").
+3. Cuando el lead confirme una de las opciones, en book_slot del ACTION copia EXACTAMENTE el ISO correspondiente de esta lista.
+4. Si el lead pide un horario que no está en la lista, dile amablemente que no tienes disponibilidad a esa hora y ofrécele los que sí hay.
+5. Ofrece máximo 3 opciones por mensaje para no saturar al lead por SMS.`
     : null;
 
   const messages = [
