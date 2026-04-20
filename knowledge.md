@@ -8,12 +8,11 @@
 
 ### Propósito principal
 
-El bot (se llama **Alejandra**) tiene **tres funciones** en este orden:
-1. **Informar al lead** sobre hipotecas, créditos y financiamiento de forma clara y educativa, usando esta base de conocimiento.
-2. **Pre-calificar al lead** identificando si cumple los dos filtros básicos.
-3. **Agendar una llamada corta (10 min)** con un asesor humano para cerrar la asesoría — aquí termina la labor del bot.
+El bot tiene **dos funciones centrales** en ese orden:
+1. **Informar al lead** sobre hipotecas, créditos y financiamiento de forma clara y educativa.
+2. **Pre-calificar al lead** identificando si cumple los dos filtros básicos antes de pasarlo a una asesoría con Luis.
 
-El bot NO cierra la venta del crédito ni cotiza tasas exactas. Su cierre natural es **la cita agendada**. El asesor humano hace lo demás.
+El bot NO cierra ventas. Su objetivo es generar conversación, educar y detectar si el lead es viable.
 
 ---
 
@@ -49,12 +48,11 @@ Todas las respuestas del bot deben seguir este estilo:
 
 ### Reglas generales del bot
 
-- Nunca prometer tasas ni montos exactos sin conocer el perfil del lead. Sí puede mencionar **rangos** y **desde qué tasa maneja cada banco** (info pública de la base) y aclarar que la tasa final depende del perfil.
-- Cuando el lead ya pasó los dos filtros de pre-calificación → **proponer directamente una llamada de 10 minutos** con un asesor (el sistema le ofrece horarios reales del calendario).
-- Capturar la **necesidad real** del lead antes de agendar (compra primera casa / refinanciar / liquidez para negocio / etc.). Esta info se guarda automáticamente en una nota del contacto para que el asesor entre a la llamada con contexto.
-- Si el lead tiene un obstáculo (buró negativo, sin ingresos comprobables) → ser empático, explicar qué puede hacer para resolverlo y mantener la puerta abierta. Aun así se puede agendar si quiere platicar con Luis.
+- Nunca prometer tasas ni montos exactos sin conocer el perfil del lead.
+- Cuando el lead ya pasó los dos filtros de pre-calificación → invitarlo a la asesoría gratuita con Luis.
+- Si el lead tiene un obstáculo (buró negativo, sin ingresos comprobables) → ser empático, explicar qué puede hacer para resolverlo y mantener la puerta abierta.
 - Ante dudas de salud, fiscal o legal muy específicas → recomendar un especialista.
-- Frase de cierre para cerrar el agendamiento: *"¿Te propongo un horario para una llamada rápida de 10 min con el asesor?"*
+- Frase de cierre para derivar a Luis: *"¿Quieres que analicemos tu caso sin costo? Agenda en credexpress.com"*
 
 ---
 
@@ -256,6 +254,163 @@ El bot sigue este orden de preguntas para pre-calificar al lead:
 > No es un no para siempre, es un "todavía no" con un camino claro.
 >
 > Si quieres te explico cómo puedes prepararte, ¿te interesa?
+
+
+---
+
+## TASAS Y PLAZOS DE REFERENCIA — RESPUESTA RÁPIDA DEL BOT
+
+> Esta sección es para que el bot responda preguntas sobre tasas y plazos de forma inmediata, sin consultar las secciones largas.
+> Siempre aclarar: "el número exacto depende de tu perfil crediticio".
+
+---
+
+### PRODUCTO 1 — HIPOTECA (Adquisición de vivienda)
+
+**¿Para quién?** Persona que quiere comprar casa o departamento.
+
+| Banco | Producto | Tasa Inicial | Tasa Final | Plazo | Cobra seguros/comisión |
+|---|---|---|---|---|---|
+| Santander | Hipoteca Free | 11.35% | 10.35% (mes 37+) | Hasta 198 meses (~16.5 años) | No |
+| Santander | Plan Platino (asalariados) | 9.80% | **8.85%** (con 3 requisitos) | Hasta 25 años (300 meses) | No |
+| Banorte | Hipoteca Fuerte Cero | 11.15% | 11.15% (fija) | 20 años (240 meses) | No |
+| Banorte | Hipoteca Fuerte Tradicional | Desde 9.15% (perfil premium) | Sin beneficio | 20 años | Sí |
+| HSBC | Hipoteca Full Adquisición | 10.30% | 10.00% (puntualidad anual) | ~211 meses | Sí |
+| Scotiabank | Pagos Oportunos (con vinculación) | 10.75% | 10.00% | ~215 meses | Solo avalúo |
+| BBVA | Hipoteca Fija | 10.99% | 10.99% (sin beneficio) | 20 años | Sí |
+| Citibanamex | Hipoteca Perfiles | 10.95% (perfil común) | 10.95% | 20 años | Sí |
+
+**Aforo máximo:** hasta 95% (Santander asalariados) · 90% (mayoría de bancos) · 80% (terreno/liquidez)
+
+**Enganche mínimo real a tener:** 10% del valor + 7% gastos de escrituración = ~17% del valor de la propiedad
+
+**Rango de mensualidad orientativo** (crédito de $1,800,000 a 20 años):
+- Mensualidad más baja: ~$18,946 (Banorte Cero)
+- Mensualidad más alta: ~$20,383 (BBVA)
+
+**Costo total orientativo** (mismo crédito):
+- Más barato: Santander Free → **$3,923,964**
+- Más caro: BBVA → **$4,812,000**
+- Diferencia: hasta $888,000 entre el mejor y el peor banco
+
+---
+
+### PRODUCTO 2 — HIPOTECA PARA TERRENO
+
+**¿Para quién?** Persona que quiere comprar un terreno (no construido).
+
+| Concepto | Detalle |
+|---|---|
+| Banco de referencia | Banorte |
+| Tasa | 10.68% |
+| CAT | 12.7% |
+| Plazo máximo | **15 años** (más corto que vivienda terminada) |
+| Aforo máximo | **70%** (banco presta menos porque el riesgo es mayor) |
+| Enganche mínimo | 30% del valor del terreno |
+| Seguro de daños | No aplica (no hay construcción) |
+
+**Condición indispensable del terreno:** servicios básicos comprobables (agua o factibilidad) + boleta predial + dentro de fraccionamiento formal.
+
+---
+
+### PRODUCTO 3 — LIQUIDEZ CON GARANTÍA HIPOTECARIA
+
+**¿Para quién?** Dueño de casa libre de gravamen que necesita capital para negocio, inversión o consolidar deudas.
+
+| Banco | Tasa Mínima | CAT | Plazo | Mensualidad ref. ($2M) | Total ref. |
+|---|---|---|---|---|---|
+| Santander | **11.50%** | 13.9% | Hasta 15 años | $28,734 | $4,906,000 |
+| Banorte | 13.99% | 17.1% | Hasta 15 años | $32,792 | $5,590,000 |
+| Scotiabank | 15.50% (→14.75% con beneficio) | 18.3% | Hasta 15 años | $35,097 | $5,485,000 |
+
+**Aforo:** banco presta entre 50% y 70% del valor del inmueble.
+**Restricción:** solo vivienda habitacional. No terrenos, locales, bodegas ni uso mixto.
+
+---
+
+### PRODUCTO 4 — CRÉDITO PYME / EMPRESARIAL
+
+#### 4A — Sin garantía hipotecaria (rápido, hasta $5M)
+
+| Tipo | Tasa | Plazo | Monto | Requisito principal | Aliados |
+|---|---|---|---|---|---|
+| Crédito simple (facturación SAT) | 25%–35% anual | 12–36 meses | $500K–$5M | Facturación constante ante SAT | Confío, Finsus, Crece, Banorte |
+| Anticipo sobre TPV | 2%–2.5% mensual | Hasta 12 meses | $200K–$10M | Historial de ventas con terminal | iCash, Anticipa |
+
+**Desembolso:** 48–72 horas · Sin garantía hipotecaria · Evaluación por Visor SAT o historial TPV.
+
+#### 4B — Con garantía hipotecaria (tasa baja, largo plazo)
+
+| Concepto | Detalle |
+|---|---|
+| Tasa anual | 15%–25% |
+| Plazo | Hasta 10–15 años |
+| Monto | >$5,000,000 MXN |
+| Facturación mínima requerida | $5M/mes ($60M anuales) |
+| Aliados | Banorte, Afirme, Crece, Capitalizer, Finsus, Max Capital |
+
+#### 4C — Crédito revolvente / Factoraje
+
+| Producto | Para quién | Tasa mensual | Monto |
+|---|---|---|---|
+| Clara (TDC empresarial) | Agencias, startups, gastos digitales | 2%–3% (0% si paga al corte) | $50K–$5M |
+| Fin Cargo | Importadores (Asia, EE.UU., Europa) | 1.5%–2.5% | Hasta $1.5M USD |
+| Zepelin (factoraje silencioso) | Empresas que venden a Walmart, Liverpool, etc. | 1.5%–3% | Según facturación |
+
+#### 4D — Arrendamiento puro (Leasing)
+
+| Giro | Aliado |
+|---|---|
+| Transporte / tráilers | Tip México |
+| Autos y flotillas | Bitcar, Tip Auto |
+| Equipo médico / tecnología / paneles solares | Engin |
+| Maquinaria industrial | Solufi, Unifin, Renda Más |
+| Construcción / equipo pesado | Acción Financiera |
+
+**Ventaja fiscal:** renta 100% deducible como gasto operativo ante el SAT.
+
+---
+
+### RESPUESTA RÁPIDA DEL BOT — según tipo de lead
+
+Cuando el lead pregunta "¿qué tasas manejan?" o "¿en qué plazos?" usar esta guía:
+
+**Si el lead busca hipoteca:**
+> "Las tasas van del 8.85% al 11.35% dependiendo del banco y tu perfil.
+>
+> Los plazos van de 15 a 25 años — entre más corto el plazo, menos pagas en total.
+>
+> El número exacto lo define tu historial crediticio y tu comprobación de ingresos."
+
+**Si el lead busca liquidez sobre su propiedad:**
+> "Para liquidez con garantía hipotecaria las tasas van del 11.5% al 15.5% según el banco.
+>
+> El plazo puede ser hasta 15 años, lo que hace que la mensualidad sea muy manejable.
+>
+> Es el crédito más barato del mercado si tienes una propiedad libre."
+
+**Si el lead busca crédito para su negocio (sin garantía):**
+> "Para crédito empresarial sin dejar una propiedad en garantía las tasas van del 25% al 35% anual.
+>
+> Son créditos rápidos — el dinero puede estar en tu cuenta en 48 a 72 horas.
+>
+> El monto depende de lo que facturas ante el SAT o de tus ventas con terminal."
+
+**Si el lead tiene TPV:**
+> "Con historial de terminal el financiamiento es del 2% al 2.5% mensual.
+>
+> Puedes recibir hasta 2 veces tus ventas mensuales promedio.
+>
+> El pago se hace automático — se retiene un porcentaje de cada venta."
+
+**Si el lead busca crédito PyME con garantía hipotecaria (monto alto):**
+> "Si tienes una propiedad en garantía las tasas bajan bastante — entre 15% y 25% anual.
+>
+> Los plazos pueden ser de hasta 15 años, lo que reduce mucho la mensualidad.
+>
+> Necesitamos que la empresa facture mínimo $5 millones al mes para este esquema."
+
+---
 
 ---
 

@@ -2,7 +2,7 @@ import './env.js';
 import express from 'express';
 import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
-import { sendSMS, getContact, createAppointment, createContactNote } from './ghl.js';
+import { sendSMS, getContact, getUser, createAppointment, createContactNote } from './ghl.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
 import { runFollowups } from './followup.js';
@@ -46,6 +46,7 @@ async function handleTrigger(payload) {
   const contact = await getContact(contactId).catch(() => null);
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
   const phone = contact?.phone || body.phone;
+  const advisor = await resolveAdvisor(contact);
 
   const conversation = await getOrCreateConversation({
     contactId,
@@ -59,7 +60,7 @@ async function handleTrigger(payload) {
     return;
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage: '__TRIGGER_INICIAL__' });
+  await runTurn({ conversation, contactId, fullName, userMessage: '__TRIGGER_INICIAL__', advisor });
 }
 
 async function handleReply(payload) {
@@ -77,6 +78,7 @@ async function handleReply(payload) {
   const contact = await getContact(contactId).catch(() => null);
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
   const phone = contact?.phone || body.phone;
+  const advisor = await resolveAdvisor(contact);
 
   const conversation = await getOrCreateConversation({
     contactId,
@@ -96,7 +98,16 @@ async function handleReply(payload) {
     console.log(`[${fullName}] ${attachments.length} attachment(s): ${kinds}`);
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage, attachments });
+  await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor });
+}
+
+async function resolveAdvisor(contact) {
+  const advisorId = contact?.assignedTo;
+  if (!advisorId) return null;
+  const user = await getUser(advisorId);
+  if (!user) return { id: advisorId, name: null };
+  const name = user.firstName || user.name || (user.email ? user.email.split('@')[0] : null);
+  return { id: advisorId, name, email: user.email };
 }
 
 function coerceMessage(val) {
@@ -127,7 +138,7 @@ function parseAttachments(raw) {
   return [];
 }
 
-async function runTurn({ conversation, contactId, fullName, userMessage, attachments = [] }) {
+async function runTurn({ conversation, contactId, fullName, userMessage, attachments = [], advisor = null }) {
   const isInitial = userMessage === '__TRIGGER_INICIAL__';
 
   if (!isInitial) {
@@ -191,7 +202,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     availableSlotsIso: availableSlots,
     attachments: isInitial ? [] : attachments,
     postBookingContext,
-    profile: conversation.profile || {}
+    profile: conversation.profile || {},
+    advisor
   });
 
   let replyText = aiResponse.text;
@@ -262,7 +274,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
         const appt = await createAppointment({
           contactId,
           startTime: matched,
-          title: `Llamada 10 min - ${fullName}`
+          title: `Llamada 10 min - ${fullName}`,
+          assignedUserId: advisor?.id
         });
         appointmentId = appt.id;
         appointmentAt = matched;
@@ -272,7 +285,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
           appointment_id: appointmentId,
           appointment_at: appointmentAt
         });
-        await createBookingNote({ contactId, leadName: leadName || fullName, profile: conversation.profile || {}, intent: action.intent, appointmentAt: matched });
+        await createBookingNote({ contactId, leadName: leadName || fullName, profile: conversation.profile || {}, intent: action.intent, appointmentAt: matched, advisor });
       } catch (err) {
         const msg = err.response?.data?.message || err.message;
         console.error('Error creando cita:', err.response?.data || err.message);
@@ -340,7 +353,7 @@ function hasRealName(name) {
   return lower !== 'lead' && lower !== 'unknown' && lower !== 'sin nombre';
 }
 
-async function createBookingNote({ contactId, leadName, profile, intent, appointmentAt }) {
+async function createBookingNote({ contactId, leadName, profile, intent, appointmentAt, advisor }) {
   try {
     const when = formatSlotEs(appointmentAt);
     const fields = [
@@ -348,6 +361,7 @@ async function createBookingNote({ contactId, leadName, profile, intent, appoint
       `Interés: ${intent || 'no identificado'}`,
       `Cita agendada: ${when} (10 min)`,
     ];
+    if (advisor?.name) fields.push(`Asesor asignado: ${advisor.name}`);
     if (profile && Object.keys(profile).length > 0) {
       fields.push('');
       fields.push('Perfil capturado por el bot:');

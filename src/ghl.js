@@ -34,6 +34,16 @@ export async function getContact(contactId) {
   return data.contact;
 }
 
+export async function getUser(userId) {
+  try {
+    const { data } = await ghlV2.get(`/users/${userId}`);
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] getUser ${userId} falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
 export async function getFreeSlots({ startDate, endDate, timezone = 'America/Mexico_City' }) {
   const { data } = await ghlV1.get(
     `/calendars/${CALENDAR_ID}/free-slots`,
@@ -47,15 +57,17 @@ export async function getFreeSlots({ startDate, endDate, timezone = 'America/Mex
   return slots;
 }
 
-export async function createAppointment({ contactId, startTime, title }) {
-  const { data } = await ghlV1.post('/calendars/events/appointments', {
+export async function createAppointment({ contactId, startTime, title, assignedUserId }) {
+  const body = {
     calendarId: CALENDAR_ID,
     locationId: LOCATION_ID,
     contactId,
     startTime,
     title: title || 'Cita CrediExpres',
     appointmentStatus: 'confirmed'
-  });
+  };
+  if (assignedUserId) body.assignedUserId = assignedUserId;
+  const { data } = await ghlV1.post('/calendars/events/appointments', body);
   return data;
 }
 
