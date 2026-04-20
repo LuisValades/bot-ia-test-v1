@@ -62,9 +62,12 @@ Body (JSON):
   "phone": "{{contact.phone}}",
   "full_name": "{{contact.name}}",
   "message": "{{message.body}}",
+  "attachments": {{message.attachments}},
   "direction": "inbound"
 }
 ```
+
+**Nota sobre `attachments`:** este campo captura imágenes, PDFs y audios que el lead mande por MMS. Si GHL no renderiza `{{message.attachments}}` como array JSON válido, quita esa línea — el bot sigue funcionando con solo texto. Para MMS necesitas tener habilitado SMS+MMS en tu número de Twilio dentro de GHL.
 
 ---
 

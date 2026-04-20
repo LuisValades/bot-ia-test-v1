@@ -1,13 +1,4 @@
-import OpenAI from 'openai';
-
-const openrouter = new OpenAI({
-  baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': 'https://crediexpres.com',
-    'X-Title': 'Bot Alejandra SMS'
-  }
-});
+import { openrouter } from './openrouter.js';
 
 const MODEL = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5';
 
@@ -64,20 +55,25 @@ Lead con nombre dice "quiero liquidez":
 Lead acepta horario:
 "Listo Juan, te agendo el martes 1pm. Te llega confirmación 📩 [ACTION]{\\"intent\\":\\"liquidez\\",\\"next_stage\\":\\"confirmado\\",\\"propose_slots\\":false,\\"book_slot\\":\\"2026-04-21T13:00:00-06:00\\",\\"captured_name\\":null}[/ACTION]"`;
 
-export async function chat({ history, userMessage, contactName, hasName, slotsContext }) {
+export async function chat({ history, userMessage, contactName, hasName, slotsContext, attachments = [] }) {
   const nameContext = hasName && contactName
     ? `Nombre del lead (YA lo conoces, úsalo): ${contactName}`
     : `NO conoces el nombre del lead todavía. Si es tu primer mensaje o aún no lo ha dicho, PREGUNTA el nombre antes de avanzar. Cuando lo dé, pon captured_name en el ACTION.`;
+
+  const finalUserContent = buildUserContent(userMessage, attachments);
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'system', content: nameContext },
     ...(slotsContext ? [{ role: 'system', content: `Slots disponibles próximos: ${slotsContext}` }] : []),
+    ...(attachments?.length
+      ? [{ role: 'system', content: 'El lead envió archivos adjuntos. Si son imágenes (INE, comprobantes, propiedad, etc.) o PDFs, LÉELOS y coméntalos brevemente en tu respuesta. Si hay audio, ya viene transcrito en el mensaje.' }]
+      : []),
     ...history.map(m => ({
       role: m.direction === 'in' ? 'user' : 'assistant',
       content: m.body
     })),
-    { role: 'user', content: userMessage }
+    { role: 'user', content: finalUserContent }
   ];
 
   const res = await openrouter.chat.completions.create({
@@ -110,4 +106,43 @@ function extractAction(raw) {
 
 function extractText(raw) {
   return raw.replace(/\[ACTION\].*?\[\/ACTION\]/s, '').trim();
+}
+
+function buildUserContent(text, attachments) {
+  if (!attachments || attachments.length === 0) return text;
+
+  const audios = attachments.filter(a => a.kind === 'audio');
+  const images = attachments.filter(a => a.kind === 'image' && a.base64);
+  const pdfs = attachments.filter(a => a.kind === 'pdf' && a.base64);
+  const others = attachments.filter(a => a.kind === 'other' || a.kind === 'error');
+
+  const textParts = [];
+  if (text && text.length > 0) textParts.push(text);
+  for (let i = 0; i < audios.length; i++) {
+    textParts.push(`[Audio ${i + 1} transcrito]: ${audios[i].transcript}`);
+  }
+  for (const o of others) {
+    textParts.push(`[Archivo adjunto no soportado tipo ${o.mime || 'desconocido'}]`);
+  }
+  if (textParts.length === 0 && (images.length > 0 || pdfs.length > 0)) {
+    textParts.push('(El lead envió archivos sin texto)');
+  }
+
+  const content = [{ type: 'text', text: textParts.join('\n\n') }];
+  for (const img of images) {
+    content.push({
+      type: 'image_url',
+      image_url: { url: `data:${img.mime};base64,${img.base64}` }
+    });
+  }
+  for (let i = 0; i < pdfs.length; i++) {
+    content.push({
+      type: 'file',
+      file: {
+        filename: `adjunto-${i + 1}.pdf`,
+        file_data: `data:${pdfs[i].mime};base64,${pdfs[i].base64}`
+      }
+    });
+  }
+  return content;
 }

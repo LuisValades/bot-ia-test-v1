@@ -6,6 +6,7 @@ import { sendSMS, getContact, createAppointment } from './ghl.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, findSlotMatch } from './calendar.js';
 import { runFollowups } from './followup.js';
+import { processAttachments } from './media.js';
 
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -66,10 +67,11 @@ async function handleReply(payload) {
   const contactId = body.contact_id || body.contactId || body.contact?.id;
   const userMessage = (body.message || body.body || body.last_message?.body || '').trim();
   const direction = body.direction || body.last_message?.direction || 'inbound';
+  const rawAttachments = parseAttachments(body.attachments || body.last_message?.attachments);
 
   if (!contactId) return console.warn('Reply sin contactId');
   if (direction !== 'inbound' && direction !== 'in') return;
-  if (!userMessage) return console.warn('Reply sin mensaje');
+  if (!userMessage && rawAttachments.length === 0) return console.warn('Reply sin mensaje ni attachments');
 
   const contact = await getContact(contactId).catch(() => null);
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
@@ -87,18 +89,52 @@ async function handleReply(payload) {
     return;
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage });
+  const attachments = rawAttachments.length > 0 ? await processAttachments(rawAttachments) : [];
+  if (attachments.length > 0) {
+    const kinds = attachments.map(a => a.kind).join(',');
+    console.log(`[${fullName}] ${attachments.length} attachment(s): ${kinds}`);
+  }
+
+  await runTurn({ conversation, contactId, fullName, userMessage, attachments });
 }
 
-async function runTurn({ conversation, contactId, fullName, userMessage }) {
+function parseAttachments(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed === '[]' || trimmed === 'null') return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {
+      if (trimmed.startsWith('http')) return [trimmed];
+    }
+  }
+  return [];
+}
+
+async function runTurn({ conversation, contactId, fullName, userMessage, attachments = [] }) {
   const isInitial = userMessage === '__TRIGGER_INICIAL__';
 
   if (!isInitial) {
+    const attachmentMeta = attachments.length > 0
+      ? {
+          attachments: attachments.map(a => ({
+            kind: a.kind,
+            mime: a.mime,
+            url: a.url,
+            transcript: a.transcript,
+            bytes: a.bytes
+          }))
+        }
+      : undefined;
     await logMessage({
       contactId,
       conversationId: conversation.id,
       direction: 'in',
-      body: userMessage
+      body: userMessage || '(sin texto)',
+      metadata: attachmentMeta
     });
   }
 
@@ -126,7 +162,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage }) {
     userMessage: promptInput,
     contactName: leadName,
     hasName,
-    slotsContext
+    slotsContext,
+    attachments: isInitial ? [] : attachments
   });
 
   let replyText = aiResponse.text;
