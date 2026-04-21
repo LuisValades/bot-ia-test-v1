@@ -33,18 +33,19 @@ export async function chat({ history, userMessage, contactName, hasName, slotsCo
   const finalUserContent = buildUserContent(userMessage, attachments);
 
   const pairsMessage = slotPairs && slotPairs.length > 0
-    ? `═══ SLOTS REALES DEL CALENDARIO (ÚNICA VERDAD) ═══
-Estos son los ÚNICOS horarios disponibles. Si ofreces uno que no está aquí, el sistema falla.
+    ? `═══ SLOTS REALES DEL CALENDARIO (SÓLO PARA CUANDO SEA EL MOMENTO) ═══
+Estos son los ÚNICOS horarios reales del calendario. El sistema te los pone aquí por anticipación, pero NO son permiso para ofrecerlos. SÓLO los usas si estás en paso 7 u 8 del flujo de pre-calificación (lead ya calificado) O si el lead pidió agendar explícitamente.
 
-FORMATO DE MENÚ PARA MOSTRAR AL LEAD (cópialo tal cual, es el formato obligatorio):
+FORMATO DE MENÚ PARA MOSTRAR AL LEAD (cópialo tal cual CUANDO llegue el momento correcto — no antes):
 
 ${slotsMenu}
 
 Mapeo número → ISO (NO MUESTRES ESTO AL LEAD, es solo para ti):
 ${slotPairs.map(p => `${p.number} → ${p.human} → "${p.iso}"`).join('\n')}
 
-REGLAS INVIOLABLES:
-1. Cuando ofrezcas horarios al lead, reproduce EXACTO el formato de menú numerado de arriba. NO inventes horarios ni días.
+REGLAS:
+0. Si el lead apenas saludó, dijo "info", "hola", no ha dado nombre o intent → IGNORA este bloque. No ofrezcas cita todavía. Seguir el flujo.
+1. Cuando SÍ ofrezcas horarios (paso 7/8), reproduce EXACTO el formato de menú numerado. NO inventes horarios ni días.
 2. Ofrece máximo 3 opciones por mensaje (números 1, 2, 3). Si hay más, di "tengo más disponibilidad si ninguno te queda".
 3. Cuando el lead confirme, puede decir un número ("la 2", "el 3", "dame la 1") o una hora ("11am"). Identifica cuál slot eligió y pon en book_slot el ISO EXACTO.
 4. Si el lead pide un horario que no está en la lista, dile que no tienes a esa hora y re-ofrece los que sí.

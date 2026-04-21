@@ -265,12 +265,21 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   let slotsContext = '';
   let slotsMenu = '';
   const activeStage = !['confirmado', 'finalizado'].includes(conversation.stage);
-  if (activeStage) {
+  const profileData = conversation.profile || {};
+  const profileFieldsCount = Object.keys(profileData).filter(k => profileData[k] != null && profileData[k] !== '').length;
+  const leadAskedToBook = !isInitial && /\b(agend|cita|llamada|horario|hora|slot|disponib|cu[áa]ndo)\b/i.test(userMessage || '');
+  const stageAllowsSlots = conversation.stage === 'proponiendo_horario';
+  const profileReady = profileFieldsCount >= 2;
+  const shouldExposeSlots = activeStage && (stageAllowsSlots || profileReady || leadAskedToBook);
+
+  if (shouldExposeSlots) {
     availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
     slotPairs = formatSlotPairs(availableSlots, 6);
     slotsContext = formatSlotsForLead(availableSlots, 6);
     slotsMenu = formatSlotsMenu(availableSlots, 6);
-    console.log(`[${leadName || fullName}] slots reales:`, slotsContext);
+    console.log(`[${leadName || fullName}] slots reales (expuestos al LLM):`, slotsContext);
+  } else if (activeStage) {
+    console.log(`[${leadName || fullName}] slots NO expuestos — stage=${conversation.stage}, profileFields=${profileFieldsCount}, leadAskedToBook=${leadAskedToBook}`);
   }
 
   const promptInput = isInitial
