@@ -1,161 +1,99 @@
-# Bot Alejandra — SMS GHL
+# CrediExpres Agentes GHL
 
-Bot SMS conversacional con IA para **CrediExpres Mexico**. Califica leads por SMS, agenda citas en GoHighLevel, procesa imágenes/PDFs/audios (MMS) y hace follow-up automático.
+Suite de agentes conversacionales IA para GoHighLevel (GHL) + dashboard de entrenamiento humano-en-el-loop.
 
-## Producción
+## Estructura del proyecto
 
-- **URL pública (Modal):** https://luisvalades--bot-alejandra-ghl-serve.modal.run
-- **Health:** `/health`
-- **Webhooks GHL:** `/webhook/ghl/trigger` y `/webhook/ghl/reply`
-- **Dashboard:** https://modal.com/apps/luisvalades/main/deployed/bot-alejandra-ghl
+```
+CREDIEXPRES AGENTES GHL/
+├── agentes/
+│   ├── alejandra/            ← Agente 1: seguimiento leads — EN PRODUCCIÓN
+│   ├── agente-2/             ← Placeholder (rol por definir)
+│   └── agente-3/             ← Placeholder (rol por definir)
+├── dashboard/                ← UI de entrenamiento interactivo
+├── trainer/                  ← Backend que actualiza conocimiento + redeploya
+└── README.md                 ← este archivo
+```
+
+## Agentes
+
+| # | Nombre | Rol | Estado | Carpeta |
+|---|---|---|---|---|
+| 1 | **Alejandra** | Seguimiento leads, pre-calificación, agendar llamadas de 10 min | ✅ En producción | `agentes/alejandra/` |
+| 2 | *(por definir)* | Calificación / Propiedades / Recordatorios | 🔜 Pendiente | `agentes/agente-2/` |
+| 3 | *(por definir)* | Cobranza / Renovación / Post-venta | 🔜 Pendiente | `agentes/agente-3/` |
+
+## Dashboard de entrenamiento
+
+UI web donde Luis puede:
+
+1. **Seleccionar qué agente entrenar** (tab: Alejandra / Agente 2 / Agente 3)
+2. **Conversar con el agente** como si fuera un lead real
+3. **Calificar cada respuesta**: 👍 Buena / 👎 Mejorar
+4. Si da 👎 → textarea para describir **qué debería haber respondido**
+5. El feedback se envía al **Trainer**
+
+## Trainer (backend automático)
+
+Cuando recibe un 👎 + feedback:
+
+1. Lee el contexto completo de la conversación
+2. Usa un LLM para entender **por qué** la respuesta fue mala
+3. Genera un patch al `knowledge.md` / `prompt.md` del agente correspondiente
+4. Hace commit + push a GitHub
+5. Modal detecta el push y redeploya automáticamente
+6. La siguiente conversación el agente ya sabe lo nuevo
 
 ## Stack
 
-| Capa | Tecnología |
-|---|---|
-| Runtime | Node 20 + Express + node-cron |
-| Chat / visión / PDF | OpenRouter → `openai/gpt-4o-mini` |
-| Transcripción audio | OpenRouter → `openai/gpt-4o-mini-audio-preview` |
-| SMS / Calendario | GoHighLevel API (PIT token) |
-| Persistencia | Supabase (`conversations`, `messages`) |
-| Deploy | Modal (Python wrapper → contenedor Node) |
+- **Agentes**: Node.js + Express + OpenRouter (gpt-4o-mini) + GHL API + Supabase + Modal
+- **Dashboard**: Next.js (React + Tailwind + shadcn/ui)
+- **Trainer**: Node.js + OpenRouter + GitHub API + Modal redeploy
 
-## Features
+## Cómo desarrollar cada pieza
 
-- **Memoria total** del lead — lee hasta 100 msgs del historial en cada turno
-- **Name-capture** — si GHL no trae `firstName`, Alejandra pregunta el nombre y lo persiste
-- **Tono WhatsApp natural** — tutea, 4-5 frases cortas, emojis ocasionales
-- **Horarios reales** desde el calendario GHL (`free-slots`)
-- **Agendamiento directo** en GHL cuando el lead acepta un slot
-- **Follow-up cron** — cada 1 min revisa conversaciones activas sin respuesta >5 min y manda recordatorio contextual (máx 2 por lead)
-- **MMS multimodal** — ve imágenes, lee PDFs, transcribe audios que llegan por MMS
+Cada carpeta tiene su propio README con detalles:
 
-## Estructura
+- [`agentes/alejandra/README.md`](agentes/alejandra/README.md) — setup y operación del agente en producción
+- [`dashboard/README.md`](dashboard/README.md) — UI de entrenamiento
+- [`trainer/README.md`](trainer/README.md) — backend de actualización
+- [`agentes/agente-2/README.md`](agentes/agente-2/README.md) — placeholder
+- [`agentes/agente-3/README.md`](agentes/agente-3/README.md) — placeholder
 
-```
-BOT IA GHL TEST/
-├── .env                      # credenciales (NO commiteado)
-├── modal_app.py              # wrapper Python para deploy Modal
-├── package.json
-├── sql/
-│   └── schema.sql            # tablas Supabase + migración followup
-├── src/
-│   ├── index.js              # Express + webhooks + cron
-│   ├── env.js                # dotenv con override (evita env vars Windows)
-│   ├── openrouter.js         # cliente OpenRouter compartido
-│   ├── ai.js                 # prompt Alejandra + buildUserContent multimodal
-│   ├── ghl.js                # API GHL (SMS, contact, calendar, appointment)
-│   ├── db.js                 # Supabase CRUD
-│   ├── calendar.js           # slots + formato español
-│   ├── followup.js           # cron de recordatorios
-│   └── media.js              # descarga attachments + transcripción audio
-├── SETUP-WORKFLOW-GHL.md     # cómo crear los Workflows en GHL
-└── README.md
-```
+## Quick start — correr Dashboard + Trainer localmente
 
-## Setup local
+**Terminal 1 — Trainer** (backend que actualiza los .md):
 
 ```bash
+cd trainer
 npm install
-# Aplicar sql/schema.sql en tu proyecto Supabase
-npm run dev                   # arranca con --watch, auto reload
+cp .env.example .env       # editar con tu OPENROUTER_API_KEY
+npm run dev                # arranca en http://localhost:4000
 ```
 
-Necesitas `.env` con:
-```
-GHL_LOCATION_ID=...
-GHL_API_TOKEN=pit-...
-GHL_CALENDAR_ID=...
-GHL_TRIGGER_PIPELINE_ID=...
-GHL_TRIGGER_STAGE_ID=...
-OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_MODEL=openai/gpt-4o-mini
-TRANSCRIBE_MODEL=openai/gpt-4o-mini-audio-preview
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_SERVICE_KEY=sb_secret_...
-```
+**Terminal 2 — Dashboard** (UI web):
 
-## Deploy a Modal
-
-Primera vez:
 ```bash
-pip install modal python-dotenv
-python -m modal setup                                           # autentica
-python -m modal secret create bot-alejandra-env --from-dotenv .env
-python -m modal deploy modal_app.py
+cd dashboard
+npm install
+cp .env.example .env.local # editar con tu OPENROUTER_API_KEY
+npm run dev                # arranca en http://localhost:3000
 ```
 
-Actualizar tras cambios:
-```bash
-python -m modal deploy modal_app.py                             # redeploy (caché de layers)
-# Si cambió .env:
-python -m modal secret create bot-alejandra-env --from-dotenv .env --force
-python -m modal deploy modal_app.py
-```
+Abre `http://localhost:3000`, selecciona el tab **Alejandra**, conversa, da 👍 o 👎. Si das 👎 + feedback, el Trainer analiza y actualiza el `.md` correspondiente dentro de `agentes/alejandra/`. Si `GIT_AUTO_PUSH=true`, hace commit + push automáticamente.
 
-En Windows agrega `PYTHONUTF8=1` antes de los comandos Modal por encoding UTF-8.
+## Pendientes al 2026-04-20
 
-## Flujo del bot
+- [ ] Rename manual de carpeta raíz `BOT GHL` → `CREDIEXPRES AGENTES GHL` (cuando se cierre VSCode)
+- [x] Scaffold de código real de `dashboard/` (Next.js) ✅
+- [x] Scaffold de código real de `trainer/` (Node backend) ✅
+- [ ] `npm install` en `trainer/` y `dashboard/`
+- [ ] Probar feedback loop end-to-end con Alejandra
+- [ ] Definir rol/flujo de Agente 2 y Agente 3
+- [ ] Pendientes específicos de Alejandra — ver [memoria de proyecto](../../../Users/Valad/.claude/projects/c--01-ANTIGRAVITY-PROYECTOS/memory/project_bot_alejandra.md)
 
-```
-Lead entra a stage "Bot IA" → Workflow GHL → POST /webhook/ghl/trigger
-                                               ↓
-                                         Alejandra saluda por SMS
-                                               ↓
-Lead responde SMS → Workflow GHL → POST /webhook/ghl/reply
-                                               ↓
-                               Procesa attachments (imagen/PDF/audio)
-                                               ↓
-                     Lee historial completo de Supabase (100 msgs)
-                                               ↓
-                        gpt-4o-mini multimodal con contexto + ACTION JSON
-                                               ↓
-                 Si ACTION.book_slot → crea cita en GHL
-                 Si ACTION.propose_slots → consulta free-slots → ofrece
-                 Si ACTION.captured_name → guarda en conversations.full_name
-                                               ↓
-                        sendSMS vía GHL + logMessage en Supabase
+## Notas operativas
 
-Paralelo — cada 1 min:
-Cron → busca conversaciones activas sin respuesta >5 min
-     → genera recordatorio contextual con historial
-     → envía SMS + incrementa followup_count
-```
-
-## Setup de Workflows en GHL
-
-Ver [SETUP-WORKFLOW-GHL.md](SETUP-WORKFLOW-GHL.md). Necesitas 2 workflows:
-- **Trigger:** Pipeline Stage Changed (In Stage "Bot IA") → Webhook a `/webhook/ghl/trigger`
-- **Reply:** Customer Replied (SMS) → Webhook a `/webhook/ghl/reply`
-
-Para MMS multimodal, el workflow Reply debe incluir `attachments: {{message.attachments}}` en el body.
-
-## Costos aproximados (por 1000 conversaciones)
-
-| Item | Costo |
-|---|---|
-| gpt-4o-mini (texto) | ~$0.10 |
-| Con imagen adjunta | +$0.50 (por 1000 imágenes) |
-| Con PDF (5 pág avg) | +$1.50 (por 1000 PDFs) |
-| Con audio (1 min avg) | +$10 (por 1000 audios) |
-| Supabase | gratis en free tier |
-| Modal compute | ~$5/mes con min_containers=1 |
-| GHL SMS | usa tu balance Twilio/GHL |
-
-## Tuning (env vars opcionales)
-
-- `OPENROUTER_MODEL` — cambia el modelo de chat
-- `TRANSCRIBE_MODEL` — cambia el modelo de audio
-- `FOLLOWUP_DELAY_MIN` — minutos sin respuesta para disparar nudge (default 5)
-- `MAX_FOLLOWUPS` — máx recordatorios por lead (default 2)
-
-## Troubleshooting
-
-- **Cron spamea `column followup_count does not exist`** → aplica la migración al final de `sql/schema.sql` en Supabase SQL Editor
-- **`.trim is not a function` en logs** → ya está fix con `coerceMessage()`, si reaparece revisa qué tipo manda GHL en `message`
-- **OpenRouter 401 "User not found"** → env var `OPENROUTER_API_KEY` colisiona con otra var de Windows; `src/env.js` usa `dotenv override:true` para resolverlo
-- **Modal cold start lento** → ya tenemos `min_containers=1`, revisa el dashboard si cambia
-
-## Licencia
-
-Propietario — CrediExpres Mexico.
+- Cada agente deploya a Modal **independientemente** con su propio endpoint
+- Cada agente tiene su propio webhook GHL apuntando a etapas distintas del pipeline
+- Modal y GitHub son indiferentes al nombre local de la carpeta — solo leen contenido
