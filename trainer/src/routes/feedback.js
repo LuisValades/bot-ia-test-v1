@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getAgent, listAgents } from '../config/agents.js';
-import { analyzeFeedback } from '../core/analyzer.js';
+import { analyzeFeedback, runConversationalAnalyzer } from '../core/analyzer.js';
 import { readAgentFile, applyPatch } from '../core/patcher.js';
 import { commitAndPush } from '../core/git.js';
 import { runtime } from '../core/runtime-config.js';
@@ -129,6 +129,101 @@ router.post('/feedback', async (req, res) => {
   } catch (err) {
     console.error('[feedback] error:', err);
     await logFeedback({ kind: 'bad', agentId, feedback, error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Conversational feedback flow ---
+
+router.post('/feedback/chat', async (req, res) => {
+  const { agent: agentId, conversation, badResponseIndex, initialFeedback, chatHistory } = req.body || {};
+
+  if (!agentId || !Array.isArray(conversation) || typeof badResponseIndex !== 'number') {
+    return res.status(400).json({ error: 'Requerido: agent, conversation, badResponseIndex' });
+  }
+
+  let agent;
+  try {
+    agent = getAgent(agentId);
+  } catch (err) {
+    return res.status(404).json({ error: err.message });
+  }
+
+  if (agent.status === 'placeholder') {
+    return res.json({
+      action: 'ask',
+      message: `${agent.name} aún no tiene archivos reales para entrenar. Define su rol primero.`
+    });
+  }
+
+  const badResponse = {
+    index: badResponseIndex,
+    content: conversation[badResponseIndex]?.content || ''
+  };
+
+  try {
+    const currentPrompt = await readAgentFile(agent, 'prompt');
+    const currentKnowledge = await readAgentFile(agent, 'knowledge');
+
+    const result = await runConversationalAnalyzer({
+      conversation,
+      badResponse,
+      initialFeedback: initialFeedback || '(sin feedback inicial)',
+      chatHistory: chatHistory || [],
+      currentPrompt,
+      currentKnowledge
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[feedback/chat] error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/feedback/apply-patch', async (req, res) => {
+  const { agent: agentId, patch, feedbackSummary, chatHistory } = req.body || {};
+  if (!agentId || !patch) {
+    return res.status(400).json({ error: 'Requerido: agent, patch' });
+  }
+
+  let agent;
+  try {
+    agent = getAgent(agentId);
+  } catch (err) {
+    return res.status(404).json({ error: err.message });
+  }
+
+  try {
+    const { filePath, backupPath, bytesWritten } = await applyPatch(agent, patch);
+    const gitResult = runtime.autoCommitEnabled()
+      ? await commitAndPush(agent, { filePath, feedbackSummary: feedbackSummary || patch.reasoning || 'conversational patch' })
+      : { committed: false, reason: 'runtime override' };
+
+    await logFeedback({
+      kind: 'bad',
+      agentId,
+      feedback: feedbackSummary,
+      chatHistory,
+      patch,
+      filePath,
+      backupPath,
+      bytesWritten,
+      git: gitResult,
+      mode: 'conversational'
+    });
+
+    res.json({
+      ok: true,
+      patchApplied: true,
+      target: patch.target_file,
+      section: patch.section_title,
+      filePath,
+      backupPath,
+      git: gitResult
+    });
+  } catch (err) {
+    console.error('[feedback/apply-patch] error:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import PageHeader from '@/components/PageHeader';
 import AgentPicker from '@/components/AgentPicker';
 import PromptModal from '@/components/PromptModal';
+import FeedbackChat from '@/components/FeedbackChat';
 import { AGENTS, type Agent } from '@/lib/agents';
 
 type Role = 'user' | 'assistant';
@@ -25,6 +26,8 @@ export default function EntrenarPage() {
   const [feedbackIndex, setFeedbackIndex] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInitial, setChatInitial] = useState<{ index: number; feedback: string } | null>(null);
   const [promptModalOpen, setPromptModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -91,47 +94,28 @@ export default function EntrenarPage() {
     setFeedbackText('');
   };
 
-  const submitBadFeedback = async () => {
+  const openChatFlow = () => {
     if (feedbackIndex === null || !feedbackText.trim()) return;
-    setFeedbackSubmitting(true);
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agent: activeAgent.id,
-          conversation: messages,
-          badResponseIndex: feedbackIndex,
-          feedback: feedbackText.trim()
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error enviando feedback');
+    setChatInitial({ index: feedbackIndex, feedback: feedbackText.trim() });
+    setChatOpen(true);
+    setFeedbackIndex(null);
+    setFeedbackText('');
+  };
 
+  const onChatApplied = (summary: string) => {
+    setChatOpen(false);
+    if (chatInitial) {
+      const idx = chatInitial.index;
       setMessages(prev =>
         prev.map((m, i) =>
-          i === feedbackIndex
-            ? { ...m, feedback: 'bad', feedbackText: feedbackText.trim(), feedbackSent: true }
+          i === idx
+            ? { ...m, feedback: 'bad', feedbackText: chatInitial.feedback, feedbackSent: true }
             : m
         )
       );
-
-      let summary = '✅ Feedback registrado.';
-      if (data.patchApplied) {
-        summary = `✅ Aplicado a ${data.target}.md → sección "${data.section}"`;
-        if (data.git?.committed) summary += `\n· commit ${data.git.commitSha?.slice(0, 7)}`;
-        if (data.git?.pushed) summary += ' · pushed a GitHub';
-      } else if (data.skipped) {
-        summary = `ℹ️ ${data.reason || 'Feedback guardado sin aplicar.'}`;
-      }
-      alert(summary);
-      setFeedbackIndex(null);
-      setFeedbackText('');
-    } catch (err: any) {
-      alert(`⚠️ ${err.message}`);
-    } finally {
-      setFeedbackSubmitting(false);
     }
+    setChatInitial(null);
+    alert(summary);
   };
 
   const clearChat = () => {
@@ -230,17 +214,17 @@ export default function EntrenarPage() {
       {feedbackIndex !== null && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold">¿Qué debió responder?</h2>
+            <h2 className="text-lg font-semibold">¿Qué no te gustó?</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Describe qué era la respuesta correcta y por qué. El Trainer analizará tu feedback y
-              actualizará el <code className="rounded bg-slate-100 px-1">knowledge.md</code> o{' '}
-              <code className="rounded bg-slate-100 px-1">prompt.md</code> del agente.
+              Describe brevemente lo que pasó — después el <strong>analizador</strong> te hará 1-2 preguntas
+              para entender bien antes de tocar el <code className="rounded bg-slate-100 px-1">prompt.md</code> o{' '}
+              <code className="rounded bg-slate-100 px-1">knowledge.md</code>.
             </p>
             <textarea
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
-              placeholder="Ej: debió preguntar primero el tipo de empleo antes de ofrecer tasa, porque los asalariados tienen una tabla distinta a los independientes…"
-              className="mt-3 h-32 w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              placeholder="Ej: la respuesta fue muy larga / faltó preguntar X / usó tono incorrecto…"
+              className="mt-3 h-24 w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -254,15 +238,30 @@ export default function EntrenarPage() {
                 Cancelar
               </button>
               <button
-                onClick={submitBadFeedback}
-                disabled={!feedbackText.trim() || feedbackSubmitting}
+                onClick={openChatFlow}
+                disabled={!feedbackText.trim()}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {feedbackSubmitting ? 'Enviando…' : 'Enviar al Trainer'}
+                Abrir analizador →
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {chatOpen && chatInitial && (
+        <FeedbackChat
+          agentId={activeAgent.id}
+          conversation={messages.map(m => ({ role: m.role, content: m.content }))}
+          badResponseIndex={chatInitial.index}
+          initialFeedback={chatInitial.feedback}
+          open={chatOpen}
+          onClose={() => {
+            setChatOpen(false);
+            setChatInitial(null);
+          }}
+          onApplied={onChatApplied}
+        />
       )}
 
       <PromptModal
