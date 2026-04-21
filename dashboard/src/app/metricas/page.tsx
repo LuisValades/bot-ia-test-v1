@@ -38,14 +38,14 @@ export default function MetricasPage() {
     <div className="flex h-full flex-col">
       <PageHeader title="Métricas" subtitle="Resumen de feedback humano dado a los agentes" />
 
-      <div className="scroll-fade flex-1 overflow-y-auto p-8">
+      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
         {loading ? (
           <div className="text-center text-sm text-slate-500">Cargando…</div>
         ) : !metrics ? (
           <div className="text-center text-sm text-slate-500">Sin datos todavía.</div>
         ) : (
           <>
-            <section className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <section className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
               <BigStat label="Feedback total" value={metrics.totalFeedback} />
               <BigStat label="👍 Buenas" value={metrics.good} color="green" />
               <BigStat label="👎 Mejorar" value={metrics.bad} color="red" />
@@ -57,6 +57,7 @@ export default function MetricasPage() {
                 Por agente
               </h2>
               <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
@@ -87,6 +88,7 @@ export default function MetricasPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             </section>
 
@@ -95,6 +97,7 @@ export default function MetricasPage() {
                 Últimos 14 días
               </h2>
               <div className="card overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                     <tr>
@@ -133,6 +136,7 @@ export default function MetricasPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             </section>
           </>

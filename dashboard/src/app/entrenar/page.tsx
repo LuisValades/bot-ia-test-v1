@@ -148,12 +148,12 @@ export default function EntrenarPage() {
         }
       />
 
-      <div className="border-b bg-white px-8 py-4">
+      <div className="border-b bg-white px-4 py-4 md:px-8">
         <AgentPicker value={activeAgent.id} onChange={switchAgent} />
         <p className="mt-2 text-xs text-slate-500">{activeAgent.description}</p>
       </div>
 
-      <div ref={scrollRef} className="scroll-fade flex-1 overflow-y-auto px-8 py-6">
+      <div ref={scrollRef} className="scroll-fade flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6">
         {messages.length === 0 && (
           <div className="mx-auto mt-16 max-w-md rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
             <div className="mb-2 text-4xl">{activeAgent.emoji}</div>
@@ -186,7 +186,7 @@ export default function EntrenarPage() {
         </div>
       </div>
 
-      <footer className="border-t bg-white px-8 py-4">
+      <footer className="border-t bg-white px-4 py-3 md:px-8 md:py-4">
         <div className="mx-auto flex max-w-3xl gap-2">
           <input
             value={input}
@@ -204,7 +204,7 @@ export default function EntrenarPage() {
           <button
             onClick={send}
             disabled={!input.trim() || sending}
-            className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:px-6"
           >
             Enviar
           </button>
@@ -212,8 +212,8 @@ export default function EntrenarPage() {
       </footer>
 
       {feedbackIndex !== null && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4">
+          <div className="w-full max-w-lg rounded-t-lg bg-white p-4 shadow-2xl md:rounded-lg md:p-6">
             <h2 className="text-lg font-semibold">¿Qué no te gustó?</h2>
             <p className="mt-1 text-sm text-slate-500">
               Describe brevemente lo que pasó — después el <strong>analizador</strong> te hará 1-2 preguntas
@@ -287,7 +287,7 @@ function MessageBubble({
   const isUser = message.role === 'user';
   return (
     <div className={isUser ? 'flex justify-end' : 'flex justify-start'}>
-      <div className="max-w-[80%] space-y-2">
+      <div className="max-w-[90%] space-y-2 md:max-w-[80%]">
         <div
           className={`rounded-2xl px-4 py-3 text-sm shadow-sm ${
             isUser

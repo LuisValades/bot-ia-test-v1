@@ -9,7 +9,7 @@ interface Props {
 
 export default function AgentPicker({ value, onChange }: Props) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {AGENTS.map(agent => {
         const active = agent.id === value;
         return (

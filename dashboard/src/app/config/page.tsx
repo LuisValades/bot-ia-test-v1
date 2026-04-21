@@ -52,7 +52,7 @@ export default function ConfigPage() {
     <div className="flex h-full flex-col">
       <PageHeader title="Configuración" subtitle="Controles del Trainer en tiempo de ejecución" />
 
-      <div className="scroll-fade flex-1 overflow-y-auto p-8">
+      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
         {loading ? (
           <div className="text-center text-sm text-slate-500">Cargando…</div>
         ) : !cfg ? (
@@ -63,7 +63,7 @@ export default function ConfigPage() {
           <div className="max-w-2xl space-y-6">
             <section className="card p-6">
               <h2 className="mb-4 text-base font-semibold">Estado del Trainer</h2>
-              <dl className="grid grid-cols-2 gap-4 text-sm">
+              <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                 <InfoRow label="URL">{cfg.trainerUrl}</InfoRow>
                 <InfoRow label="Modelo OpenRouter">{cfg.model}</InfoRow>
               </dl>

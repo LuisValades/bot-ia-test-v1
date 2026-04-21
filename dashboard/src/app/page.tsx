@@ -31,7 +31,7 @@ export default function InicioPage() {
         subtitle="Panorama general de tus agentes y su entrenamiento"
       />
 
-      <div className="scroll-fade flex-1 overflow-y-auto p-8">
+      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
             Agentes

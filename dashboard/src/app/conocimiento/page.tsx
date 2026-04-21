@@ -109,11 +109,11 @@ export default function ConocimientoPage() {
         subtitle="Visualiza y edita el prompt + knowledge.md del agente"
       />
 
-      <div className="border-b bg-white px-8 py-4">
+      <div className="border-b bg-white px-4 py-4 md:px-8">
         <AgentPicker value={agent.id} onChange={setAgent} />
       </div>
 
-      <div className="border-b bg-white px-8">
+      <div className="border-b bg-white px-4 md:px-8">
         <div className="flex gap-1">
           <FileTab active={activeFile === 'knowledge'} onClick={() => setActiveFile('knowledge')}>
             📚 Knowledge{knowledge ? ` (${knowledge.sections.length})` : ''}
@@ -124,7 +124,7 @@ export default function ConocimientoPage() {
         </div>
       </div>
 
-      <div className="border-b bg-white px-8 py-3">
+      <div className="border-b bg-white px-4 py-3 md:px-8">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -133,7 +133,7 @@ export default function ConocimientoPage() {
         />
       </div>
 
-      <div className="scroll-fade flex-1 overflow-y-auto p-8">
+      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
         {loading ? (
           <div className="text-center text-sm text-slate-500">Cargando…</div>
         ) : !current || current.sections.length === 0 ? (
@@ -144,58 +144,87 @@ export default function ConocimientoPage() {
           </div>
         ) : (
           <div className="card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 text-left">Nivel</th>
-                  <th className="px-4 py-3 text-left">Sección</th>
-                  <th className="px-4 py-3 text-left">Vista previa</th>
-                  <th className="px-4 py-3 text-right">Caracteres</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filtered.map((s, i) => (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                        H{s.level}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">{s.title}</td>
-                    <td className="max-w-md truncate px-4 py-3 text-slate-500">{s.preview}</td>
-                    <td className="px-4 py-3 text-right font-mono text-xs text-slate-500">
-                      {s.body.length.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => openEdit(s)}
-                        className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                      >
-                        ✏️ Editar
-                      </button>
-                    </td>
+            <div className="overflow-x-auto md:block hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Nivel</th>
+                    <th className="px-4 py-3 text-left">Sección</th>
+                    <th className="px-4 py-3 text-left">Vista previa</th>
+                    <th className="px-4 py-3 text-right">Caracteres</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y">
+                  {filtered.map((s, i) => (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                          H{s.level}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{s.title}</td>
+                      <td className="max-w-md truncate px-4 py-3 text-slate-500">{s.preview}</td>
+                      <td className="px-4 py-3 text-right font-mono text-xs text-slate-500">
+                        {s.body.length.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          ✏️ Editar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <ul className="divide-y md:hidden">
+              {filtered.map((s, i) => (
+                <li key={i} className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                          H{s.level}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-500">
+                          {s.body.length.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="break-words text-sm font-medium text-slate-900">{s.title}</div>
+                      <div className="mt-1 line-clamp-2 text-xs text-slate-500">{s.preview}</div>
+                    </div>
+                    <button
+                      onClick={() => openEdit(s)}
+                      className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
-            <header className="flex items-center justify-between border-b px-6 py-4">
-              <div>
-                <h2 className="text-lg font-semibold">Editar sección</h2>
-                <p className="text-xs text-slate-500">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4">
+          <div className="flex h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-white shadow-2xl md:h-[85vh] md:rounded-lg">
+            <header className="flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-semibold md:text-lg">Editar sección</h2>
+                <p className="truncate text-xs text-slate-500">
                   {activeFile}.md · H{editing.level} · {editing.title}
                 </p>
               </div>
               <button
                 onClick={() => setEditing(null)}
-                className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="ml-2 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               >
                 ✕
               </button>
@@ -203,24 +232,24 @@ export default function ConocimientoPage() {
             <textarea
               value={editBody}
               onChange={e => setEditBody(e.target.value)}
-              className="flex-1 resize-none p-6 font-mono text-sm focus:outline-none"
+              className="flex-1 resize-none p-4 font-mono text-sm focus:outline-none md:p-6"
               placeholder="Contenido de la sección…"
             />
-            <footer className="flex items-center justify-between border-t px-6 py-3">
+            <footer className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 md:px-6">
               <span className="text-xs text-slate-500">
                 {editBody.length.toLocaleString()} caracteres
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setEditing(null)}
-                  className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 md:px-4"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={saveEdit}
                   disabled={saving || editBody === editing.body}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:px-4"
                 >
                   {saving ? 'Guardando…' : '💾 Guardar'}
                 </button>

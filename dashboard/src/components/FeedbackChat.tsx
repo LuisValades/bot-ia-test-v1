@@ -157,11 +157,11 @@ export default function FeedbackChat({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-        <header className="flex items-center justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold">🎯 Analizador de Feedback</h2>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4">
+      <div className="flex h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-xl bg-white shadow-2xl md:h-[85vh] md:rounded-xl">
+        <header className="flex items-start justify-between gap-2 border-b px-4 py-3 md:px-6 md:py-4">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold md:text-lg">🎯 Analizador de Feedback</h2>
             <p className="text-xs text-slate-500">
               Te voy a preguntar lo necesario para entender tu corrección antes de aplicarla al .md
             </p>
@@ -174,11 +174,11 @@ export default function FeedbackChat({
           </button>
         </header>
 
-        <div className="border-b bg-amber-50 px-6 py-2 text-xs text-amber-800">
+        <div className="break-words border-b bg-amber-50 px-4 py-2 text-xs text-amber-800 md:px-6">
           <strong>Feedback inicial:</strong> {initialFeedback}
         </div>
 
-        <div ref={scrollRef} className="scroll-fade flex-1 space-y-3 overflow-y-auto p-6">
+        <div ref={scrollRef} className="scroll-fade flex-1 space-y-3 overflow-y-auto p-4 md:p-6">
           {chat.map((m, i) => (
             <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
               <div
@@ -254,7 +254,7 @@ export default function FeedbackChat({
           )}
         </div>
 
-        <footer className="flex gap-2 border-t p-4">
+        <footer className="flex gap-2 border-t p-3 md:p-4">
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -266,13 +266,13 @@ export default function FeedbackChat({
             }}
             placeholder="Responde al analizador…"
             disabled={loading}
-            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50"
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-slate-50 md:px-4"
             autoFocus
           />
           <button
             onClick={send}
             disabled={!input.trim() || loading}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:px-4"
           >
             Enviar
           </button>
