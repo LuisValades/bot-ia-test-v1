@@ -2069,19 +2069,87 @@ Alejandra recomienda material solo cuando el lead **pide explícitamente**:
 
 | Recurso | URL | Uso |
 |---|---|---|
-| Canal YouTube Luis Valades | *(pendiente — Luis entregará URL y videos por tema)* | Autoridad, explicaciones detalladas |
+| Canal YouTube "Luis Valades Broker" | https://www.youtube.com/@luisvaladesbroker | Autoridad, explicaciones detalladas (285 videos, 6.2k subs) |
 | Sitio oficial | https://crediexpres.com | Marca, agendar asesoría |
 
-### Videos por tema (mapeo a completar cuando Luis entregue URLs)
+### Videos por tema (top 3 curados del canal real)
 
-| Tema | Video recomendado |
-|---|---|
-| Crédito hipotecario — requisitos y proceso | *(pendiente)* |
-| Crédito PyME — estrategia con deuda inteligente | *(pendiente)* |
-| Leasing / arrendamiento puro | *(pendiente)* |
-| Liquidez hipotecaria | *(pendiente)* |
-| Tasas 2026 — comparativo bancos | *(pendiente)* |
-| Quién es Luis Valades / CrediExpres | *(pendiente)* |
+**Elige el video más específico al tema que el lead pregunta. Solo 1 link por mensaje. Máximo 1 recomendación por conversación.**
+
+#### Hipotecario — guías generales y proceso
+| Duración | Título | URL |
+|---|---|---|
+| 22:23 | Cómo pedir un Crédito Hipotecario en México 2026: Guía Completa (Paso a Paso) | https://www.youtube.com/watch?v=9eUJI9zRKR8 |
+| 13:14 | GUÍA PARA COMPRAR UNA CASA DE INICIO A FIN | https://www.youtube.com/watch?v=6ZPFp3XSu7w |
+| 8:11 | ¿Por qué RENTAR es Mejor que COMPRAR Casa en 2025? | https://www.youtube.com/watch?v=HnMGpKy3JDo |
+
+#### Comparativas de bancos y tasas (Santander, Banorte, HSBC, BBVA, Scotia, Banamex)
+| Duración | Título | URL |
+|---|---|---|
+| 22:09 | Crédito Hipotecario 2026: Las MEJORES Tasas y CAT en México (Guía Definitiva) | https://www.youtube.com/watch?v=I5miSWFpjtY |
+| 9:56 | ¡Nueva tasa hipotecaria Banamex 8.95%! | https://www.youtube.com/watch?v=RcTA_AAUmsQ |
+| 7:18 | Banorte vs Santander: ¿Cuál Hipoteca Te Hace Ahorrar más? | https://www.youtube.com/watch?v=XtMQtn4WFYU |
+
+#### Hipoteca por perfil (independiente, PFAE, RESICO, USA, creciente vs fija)
+| Duración | Título | URL |
+|---|---|---|
+| 9:02 | Hipoteca para Independientes y Dueños de Negocio: Requisitos reales (PFAE y RESICO) | https://www.youtube.com/watch?v=uMTvpHw2kgM |
+| 8:11 | ¿Vives en USA y quieres comprar casa en México? | https://www.youtube.com/watch?v=cs61sUWs46A |
+| 7:38 | Hipoteca Creciente vs Hipoteca Fija: ¿Cuál te conviene según tus ingresos? | https://www.youtube.com/watch?v=Cmadoy99Ats |
+
+#### Infonavit y combinaciones (Apoyo Infonavit, Cofinavit)
+| Duración | Título | URL |
+|---|---|---|
+| 5:41 | Apoyo Infonavit: Ahorra $714,000 en tu Hipoteca (caso real) | https://www.youtube.com/watch?v=6we91kyNC60 |
+| 14:11 | Crédito Cofinavit - Comprar una Casa en 2025 (Guía Completa) | https://www.youtube.com/watch?v=h4UBcGSWaD8 |
+| 2:12 | Diferencias entre Apoyo Infonavit y Esquema Cofinavit | https://www.youtube.com/watch?v=RPYSYvM761w |
+
+#### Terreno y construcción
+| Duración | Título | URL |
+|---|---|---|
+| 6:19 | Crédito Hipotecario para Terreno y Construcción: Así funciona paso a paso | https://www.youtube.com/watch?v=tf90DYLlh4Y |
+| 8:40 | Crédito Hipotecario para Terreno — Construye tu casa desde cero | https://www.youtube.com/watch?v=S4pfcC6o57o |
+
+#### Liquidez hipotecaria (crédito sobre propiedad)
+| Duración | Título | URL |
+|---|---|---|
+| 10:22 | Crédito de Liquidez 2025: Todo lo que Necesitas Saber | https://www.youtube.com/watch?v=29CN1QS0bjQ |
+| 12:13 | Liquidez Hipotecaria 2026: Santander vs Banorte vs Scotiabank | https://www.youtube.com/watch?v=0mTmU75vtqs |
+
+#### Crédito PyME y financiamiento empresarial
+| Duración | Título | URL |
+|---|---|---|
+| 19:04 | Crédito PYME 2026: Bancos, Tasas y Requisitos (Guía Completa) | https://www.youtube.com/watch?v=SC1zhXqZj30 |
+| 17:21 | ¿Necesitas financiamiento para tu PYME? Descubre las opciones | https://www.youtube.com/watch?v=r_ijhe2G_0w |
+| 6:07 | Crédito para tu Negocio en 48 Horas (caso real) | https://www.youtube.com/watch?v=tJD0-e2kvXs |
+
+#### Capitalización y estrategia de deuda
+| Duración | Título | URL |
+|---|---|---|
+| 4:42 | Capitalización en Negocios: Así funciona el dinero | https://www.youtube.com/watch?v=qe0LoGTzWjU |
+| 16:25 | Gana +18% Anual en Bienes Raíces SIN Comprar Casa | https://www.youtube.com/watch?v=vXnAaSE88EU |
+
+#### SAT, fiscal y RESICO
+| Duración | Título | URL |
+|---|---|---|
+| 5:41 | ¿Tienes hipoteca? El SAT te debe devolver dinero | https://www.youtube.com/watch?v=CIRHXFiMRPI |
+| 1:18 | Cómo descargar tu DECLARACIÓN MENSUAL del SAT (Paso a Paso) | https://www.youtube.com/watch?v=KNj5PdcU7Uo |
+
+#### Seguros, avalúo, escrituración y cancelación
+| Duración | Título | URL |
+|---|---|---|
+| 8:30 | La verdad sobre los Seguros de tu Hipoteca | https://www.youtube.com/watch?v=30pwEyabJf8 |
+| 15:20 | Dentro de una Hipoteca Real: Avalúo, Escrituras y Contrato | https://www.youtube.com/watch?v=yezKonrOIf0 |
+| 5:41 | Cancelar Hipoteca: Lo Que Nadie Te Dice Después de Liquidar | https://www.youtube.com/watch?v=06gLFJqYLuU |
+
+#### Quiénes somos / entrevistas / autoridad
+| Duración | Título | URL |
+|---|---|---|
+| 58:02 | Experto hipotecario: "El 80% de mis clientes comete este error al comprar casa" | https://www.youtube.com/watch?v=qc8MOQF8BGI |
+| 1:04:20 | Experto en Remates Hipotecarios en México | https://www.youtube.com/watch?v=mTQbjLfeBTE |
+| 2:35 | Asesoría en Créditos — Broker Hipotecario México | https://www.youtube.com/watch?v=N5msBANKTAw |
+
+**Snapshot:** Los videos fueron extraídos directamente del canal de Luis mediante YouTube Data API el 2026-04-21. Canal tiene 285 videos totales con 6,290 suscriptores. Para refrescar la lista: `node agentes/alejandra/scripts/fetch-yt-videos.js` seguido de `node agentes/alejandra/scripts/categorize-yt-videos.js`.
 
 ### Frases tipo para compartir (imitan el tono de Luis)
 
