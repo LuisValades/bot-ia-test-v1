@@ -276,11 +276,11 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   const promptInput = isInitial
     ? (isReactivation
       ? (hasName
-        ? `[SISTEMA: Lead en REACTIVACIÓN. ${leadName} fue contactado antes pero la conversación no avanzó. Salúdalo por nombre reconociendo que hace tiempo no hablaban (sin fingir memoria personal), menciona que eres Alejandra de CrediExpres y pregúntale si sigue interesado en un crédito. Tono cálido y breve.]`
-        : `[SISTEMA: Lead en REACTIVACIÓN (sin nombre conocido). Fue contactado antes. Salúdalo, preséntate como Alejandra de CrediExpres, reconoce que hace tiempo no hablaban y pregúntale su nombre para retomar.]`)
+        ? `[SISTEMA: Lead en REACTIVACIÓN. ${leadName} fue contactado antes pero la conversación no avanzó. Salúdalo por nombre reconociendo que hace tiempo no hablaban (sin fingir memoria personal), menciona que eres Alejandra de Crediexpres y pregúntale si sigue interesado en un crédito. Tono cálido y breve.]`
+        : `[SISTEMA: Lead en REACTIVACIÓN (sin nombre conocido). Fue contactado antes. Salúdalo, preséntate como Alejandra de Crediexpres, reconoce que hace tiempo no hablaban y pregúntale su nombre para retomar.]`)
       : (hasName
-        ? `[SISTEMA: Nuevo lead (${leadName}) en etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo POR SU NOMBRE, preséntate como Alejandra de CrediExpres y pregunta qué tipo de crédito le interesa.]`
-        : `[SISTEMA: Nuevo lead en etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo, preséntate como Alejandra de CrediExpres y PREGUNTA SU NOMBRE antes de avanzar.]`))
+        ? `[SISTEMA: Nuevo lead (${leadName}) en etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo POR SU NOMBRE, preséntate como Alejandra de Crediexpres y pregunta qué tipo de crédito le interesa.]`
+        : `[SISTEMA: Nuevo lead en etapa "${process.env.GHL_TRIGGER_STAGE_NAME}". Salúdalo, preséntate como Alejandra de Crediexpres y PREGUNTA SU NOMBRE antes de avanzar.]`))
     : userMessage;
 
   const aiResponse = await chat({

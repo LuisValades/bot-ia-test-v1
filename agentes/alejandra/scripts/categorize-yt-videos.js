@@ -33,7 +33,7 @@ const CATEGORIES = [
   { id: 'quienes_somos', label: 'Quiénes somos / entrevistas / testimonios / autoridad' }
 ];
 
-const SYSTEM = `Eres un categorizador de videos de YouTube de un canal de broker hipotecario mexicano (Luis Valades / CrediExpres).
+const SYSTEM = `Eres un categorizador de videos de YouTube de un canal de broker hipotecario mexicano (Luis Valades / Crediexpres).
 
 Recibes una lista de videos con título, descripción, duración, views y URL.
 
@@ -77,7 +77,7 @@ async function main() {
     apiKey: process.env.OPENROUTER_API_KEY,
     defaultHeaders: {
       'HTTP-Referer': 'https://crediexpres.com',
-      'X-Title': 'CrediExpres YT Categorizer'
+      'X-Title': 'Crediexpres YT Categorizer'
     }
   });
 

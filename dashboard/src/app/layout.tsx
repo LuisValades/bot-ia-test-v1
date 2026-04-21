@@ -3,7 +3,7 @@ import './globals.css';
 import Sidebar from '@/components/Sidebar';
 
 export const metadata: Metadata = {
-  title: 'CrediExpres Agentes — Entrenamiento',
+  title: 'Crediexpres Agentes — Entrenamiento',
   description: 'Dashboard para entrenar los agentes conversacionales de GHL'
 };
 

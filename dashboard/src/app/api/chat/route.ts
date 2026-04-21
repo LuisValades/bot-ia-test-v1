@@ -10,7 +10,7 @@ const client = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
     'HTTP-Referer': 'https://crediexpres.com',
-    'X-Title': 'CrediExpres Dashboard'
+    'X-Title': 'Crediexpres Dashboard'
   }
 });
 

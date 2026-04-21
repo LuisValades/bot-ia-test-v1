@@ -339,4 +339,4 @@ miércoles 22
 
 ---
 
-*Bot Alejandra · Secuencia de seguimiento v1.3 · CrediExpres México · Abril 2026*
+*Bot Alejandra · Secuencia de seguimiento v1.3 · Crediexpres México · Abril 2026*

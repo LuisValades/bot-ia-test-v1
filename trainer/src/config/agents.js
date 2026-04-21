@@ -13,9 +13,10 @@ export const agents = {
     description: 'Seguimiento leads, pre-calificación, agendar llamadas',
     path: path.join(AGENTS_ROOT, 'alejandra'),
     files: {
-      prompt: 'Prompt alejandra.md',
+      prompt: 'system-prompt.md',
       knowledge: 'knowledge.md',
-      sequence: 'secuencia seguimiento.md'
+      sequence: 'secuencia seguimiento.md',
+      reference: 'Prompt alejandra.md'
     },
     status: 'production'
   },

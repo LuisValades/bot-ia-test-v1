@@ -155,14 +155,14 @@ function formatCorpus(conversations, luisUserId) {
 const ANALYST_SYSTEM = `Eres un analista experto en conversaciones SMS comerciales de brokers hipotecarios mexicanos.
 
 Recibes un corpus etiquetado con:
-- [LUIS] y [LUIS-NOTE]: mensajes/notas del BROKER PRINCIPAL (Luis Valadés, dueño CrediExpres) → **DALE 3X MÁS PESO** en el análisis de tono y estilo. Es la referencia de oro.
+- [LUIS] y [LUIS-NOTE]: mensajes/notas del BROKER PRINCIPAL (Luis Valades, dueño Crediexpres) → **DALE 3X MÁS PESO** en el análisis de tono y estilo. Es la referencia de oro.
 - [EFRAIN] y [JONNY]: otros asesores del equipo — peso 1x, útiles pero NO son la referencia principal
 - [STAFF]: otros usuarios sin identificar — peso 1x
 - [NOTE]: notas internas sin identificar autor específico
 - [BOT]: mensajes automatizados del bot IA (NO los uses para identificar tono humano, solo contexto)
 - [LEAD]: mensajes de los clientes potenciales (útiles para entender cómo responden los leads, qué preguntan, qué objeciones tienen)
 
-Tu tarea: extraer patrones concretos de tono y escritura que sirvan para entrenar a "Alejandra" (el bot de CrediExpres) para que suene como Luis.
+Tu tarea: extraer patrones concretos de tono y escritura que sirvan para entrenar a "Alejandra" (el bot de Crediexpres) para que suene como Luis.
 
 Responde en markdown estructurado con SECCIONES claras:
 
@@ -207,11 +207,11 @@ async function analyzeWithLLM(corpus, stats) {
     apiKey: OPENROUTER_API_KEY,
     defaultHeaders: {
       'HTTP-Referer': 'https://crediexpres.com',
-      'X-Title': 'CrediExpres Tone Analyzer'
+      'X-Title': 'Crediexpres Tone Analyzer'
     }
   });
 
-  const userPrompt = `CORPUS de conversaciones SMS de CrediExpres (${stats.conversations} conversaciones, ${stats.luis} msgs de Luis, ${stats.staff} msgs de staff, ${stats.lead} msgs de leads, ${stats.bot} msgs de bot):
+  const userPrompt = `CORPUS de conversaciones SMS de Crediexpres (${stats.conversations} conversaciones, ${stats.luis} msgs de Luis, ${stats.staff} msgs de staff, ${stats.lead} msgs de leads, ${stats.bot} msgs de bot):
 
 ${corpus}
 
@@ -294,7 +294,7 @@ async function main() {
   const outFile = path.join(outDir, `tone-analysis-${stamp}.md`);
   const corpusFile = path.join(outDir, `corpus-${stamp}.txt`);
 
-  const header = `# Análisis de tono — CrediExpres SMS
+  const header = `# Análisis de tono — Crediexpres SMS
 **Fecha:** ${new Date().toLocaleString('es-MX')}
 **Modelo:** ${ANALYSIS_MODEL}
 **Luis user ID:** ${luisUserId || '(no resuelto)'}

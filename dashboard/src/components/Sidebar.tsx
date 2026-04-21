@@ -23,7 +23,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-lg font-bold">C</div>
           <div>
-            <div className="text-sm font-semibold text-white">CrediExpres</div>
+            <div className="text-sm font-semibold text-white">Crediexpres</div>
             <div className="text-xs text-slate-400">Agentes GHL</div>
           </div>
         </div>

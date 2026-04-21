@@ -2159,6 +2159,6 @@ Alejandra recomienda material solo cuando el lead **pide explícitamente**:
 
 ### Sobre Luis Valades (uso interno)
 - **Luis Valades** (sin acento) — Broker Hipotecario Certificado AMH (vigencia junio 2027)
-- Dueño y operador principal de **CrediExpres** (una sola 's')
+- Dueño y operador principal de **Crediexpres** (una sola 's')
 - Email: luis@crediexpres.com
 - Sitio: https://crediexpres.com

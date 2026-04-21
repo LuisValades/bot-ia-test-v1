@@ -1,6 +1,6 @@
 # Bot Alejandra — SMS GHL
 
-Bot SMS conversacional con IA para **CrediExpres Mexico**. Califica leads por SMS, agenda citas en GoHighLevel, procesa imágenes/PDFs/audios (MMS) y hace follow-up automático.
+Bot SMS conversacional con IA para **Crediexpres Mexico**. Califica leads por SMS, agenda citas en GoHighLevel, procesa imágenes/PDFs/audios (MMS) y hace follow-up automático.
 
 ## Producción
 
@@ -158,4 +158,4 @@ Para MMS multimodal, el workflow Reply debe incluir `attachments: {{message.atta
 
 ## Licencia
 
-Propietario — CrediExpres Mexico.
+Propietario — Crediexpres Mexico.

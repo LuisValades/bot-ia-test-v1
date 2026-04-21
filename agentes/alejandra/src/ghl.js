@@ -63,7 +63,7 @@ export async function createAppointment({ contactId, startTime, title, assignedU
     locationId: LOCATION_ID,
     contactId,
     startTime,
-    title: title || 'Cita CrediExpres',
+    title: title || 'Cita Crediexpres',
     appointmentStatus: 'confirmed'
   };
   if (assignedUserId) body.assignedUserId = assignedUserId;

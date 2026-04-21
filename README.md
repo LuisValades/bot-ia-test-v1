@@ -1,4 +1,4 @@
-# CrediExpres Agentes GHL
+# Crediexpres Agentes GHL
 
 Suite de agentes conversacionales IA para GoHighLevel (GHL) + dashboard de entrenamiento humano-en-el-loop.
 

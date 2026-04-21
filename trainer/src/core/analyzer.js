@@ -5,13 +5,13 @@ const client = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
     'HTTP-Referer': 'https://crediexpres.com',
-    'X-Title': 'CrediExpres Trainer'
+    'X-Title': 'Crediexpres Trainer'
   }
 });
 
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
-const ANALYZER_PROMPT = `Eres un analista de entrenamiento para agentes conversacionales de CrediExpres.
+const ANALYZER_PROMPT = `Eres un analista de entrenamiento para agentes conversacionales de Crediexpres.
 
 Recibes:
 1. La conversación completa entre el agente y un lead simulado
@@ -30,7 +30,7 @@ REGLAS CRÍTICAS DE NO-DESTRUCCIÓN:
 
 REGLAS DE RUTEO:
 - Falta información de producto / tasas / requisitos → knowledge.md
-- Falta corrección de marca (CrediExpres, nombre Luis, escritura) → knowledge.md O prompt.md sección de marca, lo que exista
+- Falta corrección de marca (Crediexpres, nombre Luis, escritura) → knowledge.md O prompt.md sección de marca, lo que exista
 - Tono / estilo / flujo / orden de preguntas / frases prohibidas → prompt.md
 - Si el feedback es muy vago responde "needs_clarification": true con una pregunta específica en "clarification_question"
 
@@ -98,7 +98,7 @@ Genera el patch JSON. Recuerda: AGREGAR por default, NO reemplazar secciones con
 
 // --- CONVERSATIONAL FEEDBACK FLOW ---
 
-const CONVERSATION_SYSTEM = `Eres un **agente analizador** conversacional. Tu trabajo: entender a fondo por qué un feedback humano (👎) sobre una respuesta de Alejandra (el agente de CrediExpres) fue mala, ANTES de aplicar un cambio al prompt/knowledge.
+const CONVERSATION_SYSTEM = `Eres un **agente analizador** conversacional. Tu trabajo: entender a fondo por qué un feedback humano (👎) sobre una respuesta de Alejandra (el agente de Crediexpres) fue mala, ANTES de aplicar un cambio al prompt/knowledge.
 
 Tienes acceso a:
 - La conversación simulada completa (lead ↔ agente)
@@ -133,7 +133,7 @@ Si el humano ya confirmó aplicar:
 **REGLAS IMPORTANTES:**
 - Default en patches: "add_to_existing" o "append_section" — **NO reemplazar secciones enteras.**
 - Solo "modify_section" si el humano dijo textualmente "reemplaza/cambia todo/borra".
-- Si el feedback es trivial (ej: "es CrediExpres con una s") y NO necesita clarificación → salta directo a "propose".
+- Si el feedback es trivial (ej: "es Crediexpres con una s") y NO necesita clarificación → salta directo a "propose".
 - Sé conciso. Habla tutu al humano. Tono directo y amable.`;
 
 export async function runConversationalAnalyzer({
