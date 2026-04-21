@@ -1,8 +1,9 @@
 import { simpleGit } from 'simple-git';
+import { runtime } from './runtime-config.js';
 
 export async function commitAndPush(agent, { filePath, feedbackSummary }) {
-  if (process.env.GIT_AUTO_COMMIT !== 'true') {
-    return { committed: false, reason: 'GIT_AUTO_COMMIT=false' };
+  if (!runtime.autoCommitEnabled()) {
+    return { committed: false, reason: 'auto_commit disabled' };
   }
 
   const git = simpleGit(agent.path);
@@ -23,7 +24,7 @@ export async function commitAndPush(agent, { filePath, feedbackSummary }) {
   const commit = await git.commit(message);
 
   let pushed = false;
-  if (process.env.GIT_AUTO_PUSH === 'true') {
+  if (runtime.autoPushEnabled()) {
     try {
       await git.push();
       pushed = true;

@@ -20,13 +20,29 @@ interface ChatMessage {
 }
 
 async function loadAgentFiles(agentId: string) {
-  const res = await fetch(`${TRAINER_URL}/api/agents/${agentId}/files`, {
-    cache: 'no-store'
-  });
-  if (!res.ok) {
-    throw new Error(`Trainer no devolvió archivos para ${agentId} (${res.status})`);
-  }
+  const res = await fetch(`${TRAINER_URL}/api/agents/${agentId}/files`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Trainer no devolvió archivos para ${agentId} (${res.status})`);
   return res.json() as Promise<{ prompt: string; knowledge: string }>;
+}
+
+const CITATION_INSTRUCTION = `
+[MODO ENTRENAMIENTO — instrucción oculta al usuario]
+Al final de tu respuesta, en una línea nueva, incluye una etiqueta oculta con las secciones del knowledge.md que consultaste:
+[CITED: Nombre de sección 1 | Nombre de sección 2]
+Si no usaste ninguna sección específica, escribe: [CITED: ninguna]
+Este tag se elimina antes de mostrar tu respuesta al usuario final.`;
+
+function extractCitations(raw: string): { reply: string; citations: string[] } {
+  const match = raw.match(/\[CITED:\s*([^\]]*)\]/i);
+  if (!match) return { reply: raw.trim(), citations: [] };
+  const reply = raw.replace(match[0], '').trim();
+  const inner = (match[1] || '').trim();
+  if (!inner || /^ninguna$/i.test(inner)) return { reply, citations: [] };
+  const citations = inner
+    .split('|')
+    .map(s => s.trim())
+    .filter(Boolean);
+  return { reply, citations };
 }
 
 export async function POST(req: NextRequest) {
@@ -35,13 +51,12 @@ export async function POST(req: NextRequest) {
     const { agent: agentId, messages } = body as { agent: string; messages: ChatMessage[] };
 
     const agent = getAgent(agentId);
-    if (!agent) {
-      return NextResponse.json({ error: `Agente desconocido: ${agentId}` }, { status: 404 });
-    }
+    if (!agent) return NextResponse.json({ error: `Agente desconocido: ${agentId}` }, { status: 404 });
 
     if (agent.status === 'placeholder') {
       return NextResponse.json({
-        reply: `(${agent.name} aún no tiene prompt ni knowledge definidos. Define su rol y crea los archivos .md dentro de agentes/${agent.id}/ antes de entrenarlo.)`
+        reply: `(${agent.name} aún no tiene prompt ni knowledge. Define su rol y crea los .md en agentes/${agent.id}/.)`,
+        citations: []
       });
     }
 
@@ -60,11 +75,7 @@ export async function POST(req: NextRequest) {
         role: 'system' as const,
         content: `CONOCIMIENTO DE PRODUCTO (knowledge.md):\n\n${knowledge || '(knowledge vacío)'}`
       },
-      {
-        role: 'system' as const,
-        content:
-          'NOTA: Estás en modo entrenamiento con un humano calificador. Responde EXACTAMENTE igual que en producción real con un lead. No menciones que estás siendo entrenado.'
-      }
+      { role: 'system' as const, content: CITATION_INSTRUCTION }
     ];
 
     const chatMessages = messages
@@ -75,11 +86,12 @@ export async function POST(req: NextRequest) {
       model: MODEL,
       messages: [...systemMessages, ...chatMessages],
       temperature: 0.5,
-      max_tokens: 500
+      max_tokens: 600
     });
 
-    const reply = completion.choices[0]?.message?.content?.trim() || '(sin respuesta)';
-    return NextResponse.json({ reply, model: MODEL });
+    const raw = completion.choices[0]?.message?.content || '(sin respuesta)';
+    const { reply, citations } = extractCitations(raw);
+    return NextResponse.json({ reply, citations, model: MODEL });
   } catch (err: any) {
     console.error('[chat] error:', err);
     return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });

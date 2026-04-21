@@ -259,7 +259,7 @@ El bot sigue este orden de preguntas para pre-calificar al lead:
 >
 > La asesoría es completamente gratuita — el broker cobra al banco, no a ti.
 >
-> ¿Agendamos? Puedes hacerlo en credexpress.com
+> ¿Agendamos? Puedes hacerlo en crediexpres.com
 
 ---
 
@@ -473,9 +473,9 @@ Cuando el lead pregunta "¿qué tasas manejan?" o "¿en qué plazos?" usar esta 
 
 ## 1. PERFIL DEL ASESOR
 
-### ¿Quién es Luis Valadés?
+### ¿Quién es Luis Valades?
 
-**Luis Valadés** es un **Broker Hipotecario Certificado** con más de **10 años de experiencia** y más de **700 operaciones firmadas** en México. Opera bajo la figura de **Master Broker a través de Creditaria**, una plataforma con convenios directos con los principales bancos del país.
+**Luis Valades** es un **Broker Hipotecario Certificado** con más de **10 años de experiencia** y más de **700 operaciones firmadas** en México. Opera bajo la figura de **Master Broker a través de Creditaria**, una plataforma con convenios directos con los principales bancos del país.
 
 Su misión es ser el **puente imparcial** entre el cliente y las instituciones bancarias, analizando múltiples opciones para encontrar la hipoteca con las mejores condiciones según el perfil de cada persona.
 
@@ -503,7 +503,7 @@ Su misión es ser el **puente imparcial** entre el cliente y las instituciones b
 
 ### Contacto y Agenda
 
-- Sitio web: **credexpress.com**
+- Sitio web: **crediexpres.com**
 - Asesoría gratuita disponible en el enlace de la descripción del canal
 
 ---
@@ -1596,7 +1596,7 @@ Un score más alto puede significar una **tasa de interés menor** y acceso a me
 
 ### SOBRE EL BROKER Y EL PROCESO
 
-**P: ¿Cuánto me cuesta la asesoría de Luis Valadés?**
+**P: ¿Cuánto me cuesta la asesoría de Luis Valades?**
 R: Cero. La asesoría hipotecaria es completamente gratuita para ti. El broker recibe sus honorarios del banco cuando se firma la escritura. Nunca del cliente.
 
 **P: ¿Para qué me sirve un broker si puedo ir directo al banco?**
@@ -1773,7 +1773,7 @@ R: Sí, los documentos comprobatorios de ingresos en dólares son aceptados. Se 
 
 ## APÉNDICE: FRASES CLAVE DEL BOT
 
-El bot puede usar estas frases para comunicar de forma alineada con la marca de Luis Valadés:
+El bot puede usar estas frases para comunicar de forma alineada con la marca de Luis Valades:
 
 - *"La mejor tasa es la que te aprueban, no la que ves en el anuncio."*
 - *"Un crédito rechazado vale cero pesos. El mejor banco es el que te dice sí."*
@@ -1782,8 +1782,315 @@ El bot puede usar estas frases para comunicar de forma alineada con la marca de 
 - *"Pagar impuestos no es un gasto, es tu boleto de entrada a las ligas mayores del financiamiento."*
 - *"No le regales más años de tu vida al banco. El Apoyo Infonavit es un beneficio que ya te pertenece."*
 - *"Una hipoteca pagada no es una hipoteca cancelada, hasta que tengas el testimonio inscrito en el RPP."*
-- *"Nuestra asesoría no tiene ningún costo para ti. Agenda en credexpress.com."*
+- *"Nuestra asesoría no tiene ningún costo para ti. Agenda en crediexpres.com."*
 
 ---
 
-*Documento elaborado para uso interno de entrenamiento del Bot de Conocimiento de Luis Valadés · Broker Hipotecario Certificado · AMH · Vigencia de certificación: 15 de junio de 2027 · credexpress.com*
+*Documento elaborado para uso interno de entrenamiento del Bot de Conocimiento de Luis Valades · Broker Hipotecario Certificado · AMH · Vigencia de certificación: 15 de junio de 2027 · crediexpres.com*
+
+---
+
+## GUÍA DETALLADA DE FINANCIAMIENTO EMPRESARIAL (PyME)
+
+### Filosofía: la deuda inteligente como motor de crecimiento
+
+El secreto de las empresas líderes no es evitar la deuda, sino saber usarla estratégicamente. Rechazar un cliente grande por falta de capital es un error costoso. La lógica: usar el dinero del banco para surtir pedidos, incluir el costo financiero en el precio final → el banco pone el capital, el cliente absorbe el interés, la empresa retiene utilidad y crecimiento.
+
+**Ejemplos internacionales:** Apple pide préstamos para deducir impuestos sin tocar sus utilidades. Netflix se endeudó para producir series antes de tener clientes. Walmart toma crédito para abrir tiendas; las ventas diarias pagan la mensualidad.
+
+**Error #1 del empresario mexicano:** pedir financiamiento cuando ya está ahogado. La clave es solicitar cuando la empresa está sana, no en crisis.
+
+### Consideración fundamental: formalidad fiscal
+Las evaluaciones financieras se hacen mirando **lo que se factura ante el SAT**, estados de cuenta financieros y balance general — no solo lo que cae en las cuentas. Si el negocio declara formalmente la mayor parte de sus ingresos, tiene la puerta abierta.
+
+---
+
+### Crédito Simple
+
+Una inyección de dinero en exhibición total. Se paga mensualmente. Ideal para: maquinaria, remodelación, inventarios de un solo golpe.
+
+**Regla del equilibrio — Plazo vs Tasa:**
+- Plazo más largo → mensualidad más cómoda, pero más intereses totales
+- Plazo más corto → ahorra intereses, pero mensualidad alta
+- El empresario decide entre **comodidad mensual** o **menor costo total**
+
+#### Opción A — Crédito Simple SIN garantía
+- **Monto:** $500,000 hasta $5,000,000
+- Basado 100% en facturación fiscal
+- **Desembolso:** 48-72 horas
+- **Tasa anual:** 25-35% (depende de buró + salud de la empresa)
+- **Financieras:** Confío, Censo, Cobalto, Crece, Banorte
+- Ventaja: no requiere garantía hipotecaria, ágil
+
+#### Opción B — Crédito sobre TPV (Terminal Punto de Venta)
+- Para negocios que cobran con tarjeta crédito/débito
+- **Monto:** $200,000 hasta $10,000,000
+- Sin garantía hipotecaria
+- Respaldado por ventas mensuales de la terminal
+- **Financieras:** Anticipa, Hay Canje
+- **Mecanismo de pago:** se retiene 15-25% de cada ticket automáticamente. La diferencia se deposita al dueño.
+- **Plazo:** hasta 12 meses · **Tasa:** 2-2.5% mensual
+
+#### Opción C — Crédito Simple CON garantía hipotecaria
+- Para créditos >$5,000,000
+- Requiere propiedad en garantía
+- **Tasa anual:** 15-25% (mucho menor que sin garantía)
+- **Plazo:** hasta 10 años
+- **Facturación mínima:** $5,000,000 mensuales ($60M anuales)
+- **Financieras:** Banorte, Cobalto, Afirme, Inbursa, Crece, Capitalizar, Confío, Bien Para Bien, Afinamos, Fianzas y Más Capital
+- Crece hace evaluación híbrida (facturación fiscal + flujo real en estados de cuenta)
+
+---
+
+### Liquidez inmediata — Crédito revolvente
+
+Como tarjeta de crédito gigante para empresas. Línea autorizada, se toma lo necesario, solo se pagan intereses por lo usado.
+
+#### Estrategia 1 — Clara (tarjeta de crédito empresarial)
+- **Ideal para:** agencias marketing, startups, servicios con gastos en pauta digital o viáticos
+- **Monto:** $50,000 hasta $5,000,000 (según facturación)
+- **Ventaja:** si pagas el total a fin de mes → **40 días a 0% de interés**
+- **Tasa si financias saldo:** 2-3% mensual
+
+**Tip estratégico:** usar créditos simples de fintech (Confío, Censo) para proyectos de 3 meses con liquidación anticipada. Así creas tu propia revolvente: usar → liquidar → esperar 3-4 meses → volver a solicitar. Solo pagas intereses mientras usas.
+
+#### Estrategia 2 — FinKargo (importadores)
+- **Ideal para:** empresas que importan de Asia, Europa o EE.UU.
+- **Funcionamiento:** FinKargo paga directo al proveedor extranjero un % del costo + logística
+- **Ciclo:** el pago a FinKargo se hace cuando la mercancía ya está importada. No esperas a vender todo. Mientras vendes el primer contenedor, usas la revolvente para el segundo → stock continuo.
+- **Garantía:** no requiere hipotecar propiedades. La mercancía en tránsito respalda el crédito.
+- **Monto:** $50,000 hasta $1,500,000 USD
+- **Tasa:** 1.5-2.5% mensual
+
+#### Estrategia 3 — Xepelin (factoraje híbrido)
+- **Ideal para:** empresas que venden a grandes corporativos (Walmart, Liverpool) con plazos 90 días
+- **Clave:** factoraje **silencioso** — el cliente nunca se entera del anticipo
+- **Funcionamiento:** subes la factura timbrada → aparece en plataforma → "Cobrar" → recibes el dinero el mismo día. El cliente paga normal.
+- **Monto:** depende 100% de facturación (líneas de $10M, $20M, $50M)
+- **Respaldado por:** facturas con clientes triple A
+- **Tasa:** 1.5-3% mensual
+
+**Resumen costos de liquidez:** 1.5-3% mensual. Costo marginal comparado con la utilidad de no detener la operación.
+
+---
+
+### Arrendamiento Puro (Leasing) — herramienta fiscal
+
+**Regla de oro:** los activos que se devalúan (coches, tecnología, maquinaria) → **se rentan**. Los que ganan valor (terrenos, bodegas) → **se compran**.
+
+**Funcionamiento:** la financiera compra el activo, la empresa paga renta por usarlo. Ante el SAT ya no es compra de activo fijo → es gasto operativo → **deduces 100% de la mensualidad**, bajando utilidad fiscal y pagando menos impuestos legalmente.
+
+**Ventajas adicionales:**
+- La empresa no absorbe la depreciación (se queda con la financiera)
+- Al terminar el contrato: comprar el equipo por valor residual **O** devolverlo y sacar uno nuevo
+
+#### El secreto — Arrendamiento Inverso (Sale & Leaseback)
+Para empresas que tienen activos pero no flujo:
+1. Vendes el equipo a la financiera
+2. Recibes el dinero inmediato
+3. Te quedas con el equipo operando
+4. Pagas renta mensual deducible
+
+**Ejemplo:** Empresa con equipo médico de $3M, sin liquidez → sale & leaseback → recibe $3M, mantiene el equipo operando, paga renta deducible.
+
+**Especialistas por giro:**
+- Logística/transporte: **TIP AUTO** (vehículos), **México Leasing** (trailers)
+- Energía/alta tecnología: **Engen** (equipo médico alto costo, paneles solares)
+- Maquinaria general: **SoluFi**, **Arrenda+Más**
+- Construcción pesada: **Axionex Financiera**
+
+---
+
+### Crédito PyME — adquisición de inmuebles
+
+Cuando pagar renta deja de ser inteligente y se convierte en fuga de capital → comprar bodega, nave industrial, consultorio, oficina corporativa, terreno comercial.
+
+- **Financieras:** Afirme, Inmobiliaria (Crédito PyME), Tu Casa Express (autofinanciamiento)
+- **Financiamiento máximo:** 70% del valor del inmueble
+- **Enganche mínimo:** 30%
+- **Plazo:** 10-15 años (vs 12 meses – 5 años del crédito simple)
+- Mensualidades más manejables para la operación diaria
+
+---
+
+### Casos reales (estrategia mixta)
+
+**Caso 1 — Fábrica de zapatos (León):** arrendamiento puro para maquinaria nueva + crédito simple para inventario de piel + negociación del 10% de descuento con proveedor (cubre el costo financiero) → operación sin quemar efectivo, con beneficios fiscales.
+
+**Caso 2 — Restaurante (CDMX):** crédito con flujos TPV → remodeló cocina sin garantía hipotecaria, pago proporcional a ventas diarias.
+
+**Caso 3 — Importador textil:** FinKargo (pagar proveedor India, contenedor como garantía) + Xepelin (factoraje para adelantar facturas de Liverpool que pagan a 90 días) → nunca pierde liquidez, ciclo operativo continuo.
+
+---
+
+### El punto más importante: transparencia fiscal = activo estratégico
+
+Los bancos no prestan sobre lo que dices ganar, sino sobre lo que le dijiste al SAT, lo que fiscalizas y la utilidad declarada.
+
+**Error fatal:** estrategias agresivas para no pagar impuestos → esconder ingresos = matar el crecimiento empresarial.
+
+**Verdad:** si quieres tasas preferenciales y créditos de $5M-$50M → tienes que ser transparente. **Pagar impuestos no es gasto, es el boleto de entrada a ligas mayores.**
+
+---
+
+## GUÍA TASAS HIPOTECARIAS 2026 — COMPARATIVO 6 BANCOS PRINCIPALES
+
+### Mito fundamental
+
+Una diferencia del 1% en tasa puede costar **más de un millón de pesos extra** en un plazo completo. Pero el mito que hay que romper: **no decides solo por la tasa de interés o el CAT**.
+
+Ejemplo: Banco A ofrece 10% y Banco B ofrece 11%. Parece obvio elegir A. **Error.** Si B no cobra seguros ni comisiones, puede terminar costando menos que A.
+
+**Dato más importante en una hipoteca: el costo total a pagar en el plazo completo**, no la tasa.
+
+### Advertencia sobre tasas publicitarias
+
+La tasa en TV es **tasa gancho**. La real depende 100% del perfil del solicitante.
+
+### Los 3 perfiles de crédito
+
+| Perfil | Líneas de crédito | Score buró | Tasa disponible |
+|---|---|---|---|
+| **Alto** | >$150,000 en TDC | 750+ | 8.5-9% anual |
+| **Medio** | $50,000-$150,000 | 685 | 10.5-11% anual |
+| **Bajo** | <$50,000 | 620 | 10.5-11%+ anual |
+
+**Criterios clave:** pocas consultas buró, revolvencia <30% en tarjetas, antigüedad laboral, historial hipotecario previo.
+
+### El mejor banco = el que te aprueba lo que necesitas
+
+Pedro Ramírez necesita $2M con ingresos de $50K/mes, quiere 90% financiamiento ($1.8M):
+- Bancos 1, 2, 4 y 5: aprueban $1.4-$1.6M al 9-10% ❌ (le falta $200-$400K de enganche)
+- Banco 3: aprueba $1.8M al 11-12% ✅
+
+**El mejor es el Banco 3**, aunque tenga tasa más alta, porque aprueba el monto necesario.
+
+---
+
+### Comparativo bancos — parámetros estándar
+Valor propiedad $2M · 90% financiamiento ($1.8M) · Plazo 240 meses · Vivienda libre
+
+#### 1. Banorte — Hipoteca Fuerte Cero (producto estrella)
+- **Tasa fija:** 11.15%
+- Sin costo contratación, sin avalúo, sin seguros (incluidos en tasa)
+- Mensualidad: **$18,946** (la más baja)
+- Total a pagar: $4,548,000
+
+Contra la versión tradicional (10.15% + seguros + comisiones): la Cero ahorra $500/mes y $41K total.
+
+#### 2. Santander — Hipoteca Free ⭐ GANADOR EN COSTO TOTAL
+- **Tasa inicial:** 11.35% → baja a 10.35% con pagos puntuales desde mes 36
+- Sin contratación, sin avalúo, sin seguros (en tasa)
+- Mensualidad: $19,818
+- **Plazo real con pagos puntuales: 198 meses (16.5 años)** vs 240
+- Total a pagar: **$4,054,000** ⭐ MENOR
+
+#### 3. HSBC — Hipoteca Full Adquisición
+- **Tasa inicial:** 9.65% (con <70% financiamiento) · 10.3% (≥70%)
+- Reducción 0.15%/año por pago puntual hasta piso de 10%
+- Cobra seguros
+- Mensualidad: $19,651 · Plazo real: 211 meses · Total: $4,134,000
+- CAT: 11.6%
+- **Ventaja única:** usa la misma garantía para crédito de liquidez futuro (+$1M adicionales sin trámite completo)
+
+#### 4. Scotiabank — Crédito con Vinculación
+- **Esquema 7x5:** 9.5% si acortas a 5 años
+- **Requiere vinculación:** portabilidad de nómina O depósitos >$500K/mes O TDC Scotiabank
+- Con vinculación: 10.75% → piso 10% con pagos puntuales
+- Sin comisión contratación, cobra seguros
+- Mensualidad: $20,122 · Plazo real: 215 meses · Total: $4,239,000 · CAT: 12.3%
+
+#### 5. BBVA
+- **Tasa publicitaria:** 9.15% · **Real aplicable:** 10.9% promedio
+- Simulador web ofrece solo 70% (restrictivo); con gestión directa → 90%
+- Tasa fija sin reducción por pagos
+- Mensualidad: $20,383 · Plazo: 240 meses · Total: **$4,812,000** (el más caro)
+- CAT: 13.1% · Cobra seguros, avalúo y comisión admin
+- **Fuerte solo** si tienes convenio desarrolladora-BBVA específico
+
+#### 6. Banamex — Hipoteca Perfiles
+- **Tasa publicitaria:** 9.25-11.75% · **Práctica aplicable:** 9.95-10.95%
+- Tasa 9.25% **solo para clientes banca privada con >$2M en Banamex**
+- Mensualidad: $19,915 · Plazo: 240 meses · Total: $4,696,000
+- Cobra avalúo $5,500 + comisión contratación 1% ($18K) + seguros
+
+---
+
+### Ranking consolidado
+
+**Menor costo total (criterio principal):**
+1. 🥇 Santander — $4,054,000
+2. 🥈 HSBC — $4,134,000
+3. 🥉 Scotiabank — $4,239,000
+4. Banorte — $4,548,000
+5. Banamex — $4,696,000
+6. BBVA — $4,812,000
+
+**Mensualidad más cómoda:** Banorte ($18,946)
+
+**Flexibilidad futura (liquidez adicional):** HSBC
+
+**Perfil inversionista banca privada:** Banamex
+
+**Convenio desarrolladora específico:** BBVA
+
+### Recomendación por tipo de cliente
+
+| Cliente busca… | Banco recomendado |
+|---|---|
+| Menor costo total | Santander (1° opción), HSBC (2°) |
+| Mensualidad más baja | Banorte |
+| Flexibilidad — liquidez futura con misma garantía | HSBC |
+| Tasa preferencial con inversiones en banco | Banamex |
+| Tiene convenio con constructora | BBVA |
+
+### Conclusión para el lead
+Para 2026, **Santander con Hipoteca Free es la opción más competitiva** para la mayoría de perfiles, seguida por HSBC. La decisión final depende del perfil del solicitante, flujo mensual deseado y capacidad de hacer pagos puntuales.
+
+---
+
+## MATERIAL DE CONFIANZA — Videos YouTube + Sitio Web
+
+### Cuándo compartir (criterio estricto)
+
+Alejandra recomienda material solo cuando el lead **pide explícitamente**:
+
+1. **Más detalles de un producto** — *"Explícame bien cómo funciona el leasing"*, *"Quiero entender mejor el crédito con garantía hipotecaria"*
+2. **Conocer quiénes somos** — *"¿Quién es Luis Valades?"*, *"¿Cuánto tiempo llevan?"*, *"Me puedes dar referencias?"*
+3. **Construir confianza** — el lead duda, pide pruebas de autoridad antes de avanzar
+
+**NO compartir videos:**
+- En saludos o primer contacto sin que el lead lo pida
+- Para llenar silencios
+- Si el lead ya está fluyendo en pre-calificación
+- Más de 1 video por conversación (evitar overload)
+
+### Recursos disponibles
+
+| Recurso | URL | Uso |
+|---|---|---|
+| Canal YouTube Luis Valades | *(pendiente — Luis entregará URL y videos por tema)* | Autoridad, explicaciones detalladas |
+| Sitio oficial | https://crediexpres.com | Marca, agendar asesoría |
+
+### Videos por tema (mapeo a completar cuando Luis entregue URLs)
+
+| Tema | Video recomendado |
+|---|---|
+| Crédito hipotecario — requisitos y proceso | *(pendiente)* |
+| Crédito PyME — estrategia con deuda inteligente | *(pendiente)* |
+| Leasing / arrendamiento puro | *(pendiente)* |
+| Liquidez hipotecaria | *(pendiente)* |
+| Tasas 2026 — comparativo bancos | *(pendiente)* |
+| Quién es Luis Valades / CrediExpres | *(pendiente)* |
+
+### Frases tipo para compartir (imitan el tono de Luis)
+
+- *"Mira, justo ese tema Luis lo explica a detalle en este video: [link]. Revísalo y me dices si te quedó alguna duda."*
+- *"Te recomiendo este video donde se ve cómo funciona en un caso real: [link]."*
+- *"Si quieres conocernos antes, en crediexpres.com y en nuestro canal tenemos todo el proceso documentado."*
+
+### Sobre Luis Valades (uso interno)
+- **Luis Valades** (sin acento) — Broker Hipotecario Certificado AMH (vigencia junio 2027)
+- Dueño y operador principal de **CrediExpres** (una sola 's')
+- Email: luis@crediexpres.com
+- Sitio: https://crediexpres.com

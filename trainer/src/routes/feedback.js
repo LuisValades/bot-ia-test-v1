@@ -5,13 +5,15 @@ import { getAgent, listAgents } from '../config/agents.js';
 import { analyzeFeedback } from '../core/analyzer.js';
 import { readAgentFile, applyPatch } from '../core/patcher.js';
 import { commitAndPush } from '../core/git.js';
+import { runtime } from '../core/runtime-config.js';
 
 const router = express.Router();
 const LOGS_DIR = path.resolve(process.cwd(), 'logs');
+const BACKUPS_DIR = path.resolve(process.cwd(), 'backups');
 
 async function logFeedback(entry) {
   await fs.mkdir(LOGS_DIR, { recursive: true });
-  const line = JSON.stringify({ ...entry, at: new Date().toISOString() }) + '\n';
+  const line = JSON.stringify({ id: `fb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, ...entry, at: new Date().toISOString() }) + '\n';
   await fs.appendFile(path.join(LOGS_DIR, 'feedback.jsonl'), line, 'utf8');
 }
 
@@ -36,6 +38,21 @@ router.get('/agents/:id/files', async (req, res) => {
   }
 });
 
+router.post('/feedback-good', async (req, res) => {
+  const { agent: agentId, conversation, responseIndex } = req.body || {};
+  try {
+    await logFeedback({
+      kind: 'good',
+      agentId,
+      responseIndex: typeof responseIndex === 'number' ? responseIndex : null,
+      response: conversation?.[responseIndex]?.content?.slice(0, 500) || null
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/feedback', async (req, res) => {
   const { agent: agentId, conversation, badResponseIndex, feedback } = req.body || {};
 
@@ -53,11 +70,11 @@ router.post('/feedback', async (req, res) => {
   }
 
   if (agent.status === 'placeholder') {
-    await logFeedback({ agentId, feedback, skipped: true, reason: 'agente placeholder' });
+    await logFeedback({ kind: 'bad', agentId, feedback, skipped: true, reason: 'agente placeholder' });
     return res.json({
       ok: true,
       skipped: true,
-      reason: `El agente ${agent.name} aún no tiene archivos reales; feedback solo registrado en logs.`
+      reason: `${agent.name} aún no tiene archivos; feedback solo registrado.`
     });
   }
 
@@ -79,14 +96,17 @@ router.post('/feedback', async (req, res) => {
     });
 
     if (patch.needs_clarification) {
-      await logFeedback({ agentId, feedback, skipped: true, reason: 'needs_clarification', patch });
+      await logFeedback({ kind: 'bad', agentId, feedback, skipped: true, reason: 'needs_clarification', patch });
       return res.json({ ok: true, skipped: true, needs_clarification: true, patch });
     }
 
     const { filePath, backupPath, bytesWritten } = await applyPatch(agent, patch);
-    const gitResult = await commitAndPush(agent, { filePath, feedbackSummary: feedback });
+    const gitResult = runtime.autoCommitEnabled()
+      ? await commitAndPush(agent, { filePath, feedbackSummary: feedback })
+      : { committed: false, reason: 'runtime override' };
 
     await logFeedback({
+      kind: 'bad',
       agentId,
       feedback,
       patch,
@@ -108,7 +128,31 @@ router.post('/feedback', async (req, res) => {
     });
   } catch (err) {
     console.error('[feedback] error:', err);
-    await logFeedback({ agentId, feedback, error: err.message });
+    await logFeedback({ kind: 'bad', agentId, feedback, error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/rollback', async (req, res) => {
+  const { backupPath, targetPath } = req.body || {};
+  if (!backupPath || !targetPath) {
+    return res.status(400).json({ error: 'Requerido: backupPath, targetPath' });
+  }
+  const resolved = path.resolve(backupPath);
+  if (!resolved.startsWith(BACKUPS_DIR)) {
+    return res.status(400).json({ error: 'backupPath debe estar dentro de trainer/backups/' });
+  }
+  try {
+    const backup = await fs.readFile(resolved, 'utf8');
+    await fs.writeFile(targetPath, backup, 'utf8');
+    await logFeedback({
+      kind: 'rollback',
+      backupPath: resolved,
+      targetPath,
+      bytesRestored: Buffer.byteLength(backup)
+    });
+    res.json({ ok: true, restoredBytes: Buffer.byteLength(backup) });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
