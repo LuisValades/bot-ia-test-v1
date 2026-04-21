@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const AGENTS_ROOT = path.resolve(__dirname, '../../../agentes');
+const AGENTS_ROOT =
+  process.env.AGENTS_ROOT || path.resolve(__dirname, '../../../agentes');
 
 export const agents = {
   alejandra: {
