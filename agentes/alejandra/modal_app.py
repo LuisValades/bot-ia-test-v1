@@ -24,6 +24,7 @@ image = (
     .add_local_file(str(PROJECT_DIR / "package-lock.json"), "/app/package-lock.json", copy=True)
     .run_commands("cd /app && npm ci --omit=dev")
     .add_local_file(str(PROJECT_DIR / "knowledge.md"), "/app/knowledge.md", copy=True)
+    .add_local_file(str(PROJECT_DIR / "system-prompt.md"), "/app/system-prompt.md", copy=True)
     .add_local_dir(str(PROJECT_DIR / "src"), "/app/src", copy=True)
 )
 
