@@ -2,17 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { getAgent } from '@/lib/agents';
 
+export const dynamic = 'force-dynamic';
+
 const TRAINER_URL = process.env.TRAINER_URL || 'http://localhost:4000';
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
-const client = new OpenAI({
-  baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': 'https://crediexpres.com',
-    'X-Title': 'Crediexpres Dashboard'
-  }
-});
+function getClient() {
+  return new OpenAI({
+    baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+    defaultHeaders: {
+      'HTTP-Referer': 'https://crediexpres.com',
+      'X-Title': 'Crediexpres Dashboard'
+    }
+  });
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -82,6 +86,7 @@ export async function POST(req: NextRequest) {
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .map(m => ({ role: m.role, content: m.content }));
 
+    const client = getClient();
     const completion = await client.chat.completions.create({
       model: MODEL,
       messages: [...systemMessages, ...chatMessages],

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 const TRAINER_URL = process.env.TRAINER_URL || 'http://localhost:4000';
