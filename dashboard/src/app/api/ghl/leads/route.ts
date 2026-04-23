@@ -11,6 +11,40 @@ export const dynamic = 'force-dynamic';
 
 const MS_24H = 24 * 60 * 60 * 1000;
 
+interface GhlUser {
+  id: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  deleted?: boolean;
+}
+
+// Cache en memoria del server (se recicla en cada cold start)
+let USERS_CACHE: { at: number; map: Record<string, string> } | null = null;
+const USERS_TTL_MS = 5 * 60 * 1000;
+
+async function getUserMap(): Promise<Record<string, string>> {
+  if (USERS_CACHE && Date.now() - USERS_CACHE.at < USERS_TTL_MS) return USERS_CACHE.map;
+  try {
+    const { locationId } = getGhlConfig();
+    const resp = await ghlGet<{ users: GhlUser[] }>(
+      '/users/',
+      { locationId },
+      { version: '2021-07-28' }
+    );
+    const map: Record<string, string> = {};
+    for (const u of resp.users || []) {
+      if (u.deleted) continue;
+      const firstName = u.firstName || u.name?.split(' ')[0] || u.id;
+      map[u.id] = firstName;
+    }
+    USERS_CACHE = { at: Date.now(), map };
+    return map;
+  } catch {
+    return USERS_CACHE?.map || {};
+  }
+}
+
 function tagFromConversation(c: GhlConversation, lastMsgAgeMin: number): 'hot' | 'warm' | 'new' | 'cold' {
   if ((c.unreadCount || 0) >= 2 && lastMsgAgeMin < 60) return 'hot';
   if (c.lastMessageDirection === 'inbound' && lastMsgAgeMin < 180) return 'warm';
@@ -62,6 +96,9 @@ export async function GET(req: NextRequest) {
       return now - t < MS_24H;
     });
 
+    // Mapa userId → primer nombre, para saber quién escribió cada mensaje
+    const userMap = await getUserMap();
+
     // 2) Para cada conversación, traer últimos 5 mensajes y armar el hilo visible.
     const leads = await Promise.all(
       recent.slice(0, 12).map(async conv => {
@@ -76,22 +113,35 @@ export async function GET(req: NextRequest) {
           messages = [];
         }
 
+        const leadDisplayName = conv.fullName || conv.contactName || 'Lead';
         const thread = messages
           .filter(m => SMS_MESSAGE_TYPES.has(m.type))
           .slice(0, 5)
           .reverse()
-          .map(m => ({
-            who: m.direction === 'outbound' ? 'Alejandra/Asesor' : conv.fullName || conv.contactName || 'Lead',
-            msg: (m.body || '').trim().slice(0, 280),
-            time: m.dateAdded
-              ? new Date(m.dateAdded).toLocaleString('es-MX', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  day: '2-digit',
-                  month: 'short'
-                })
-              : ''
-          }));
+          .map(m => {
+            let who: string;
+            if (m.direction === 'inbound') {
+              who = leadDisplayName;
+            } else if (m.userId && userMap[m.userId]) {
+              who = userMap[m.userId];
+            } else if (m.source === 'workflow' || m.source === 'bot') {
+              who = 'Alejandra (bot)';
+            } else {
+              who = 'Asesor';
+            }
+            return {
+              who,
+              msg: (m.body || '').trim().slice(0, 280),
+              time: m.dateAdded
+                ? new Date(m.dateAdded).toLocaleString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: 'short'
+                  })
+                : ''
+            };
+          });
 
         const lastDate = conv.lastMessageDate ? new Date(conv.lastMessageDate) : new Date();
         const ageMin = Math.floor((now - lastDate.getTime()) / 60000);

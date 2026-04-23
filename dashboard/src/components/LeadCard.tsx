@@ -104,19 +104,23 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
     }
   };
 
-  const proposeFromScratch = async () => {
+  const proposeFromScratch = async (customInstruction?: string) => {
     if (polishing) return;
     setPolishing(true);
     setError(null);
     try {
+      const baseInstruction =
+        'Proponer un SMS de seguimiento apropiado basado en el hilo reciente, corto y con una sola pregunta clara.';
+      const instr = customInstruction?.trim()
+        ? `${baseInstruction} Considera este guion del asesor: "${customInstruction.trim()}"`
+        : baseInstruction;
       const res = await fetch('/api/suggest-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           thread: lead.thread,
           currentSms: '',
-          instruction:
-            'Proponer un SMS de seguimiento apropiado basado en el hilo reciente, corto y con una sola pregunta clara.',
+          instruction: instr,
           leadName: lead.name,
           advisorName: advisor.name,
           reason: lead.reason
@@ -126,6 +130,7 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
       if (!res.ok) throw new Error(data.error || 'Error al proponer');
       setDraft(data.sms);
       setPolishNote(data.note || null);
+      setInstruction('');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -230,43 +235,20 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
                   border: '1px solid var(--border)',
                   fontFamily: 'inherit'
                 }}
-                rows={Math.max(3, draft.split('\n').length + 1)}
+                rows={Math.max(3, Math.min(8, draft.split('\n').length + 1))}
                 disabled={!!sentChannel}
               />
-
-              <div
-                className="mt-[8px] flex items-start gap-[6px] border-t pt-[8px] text-[11.5px]"
-                style={{ borderTop: '1px dashed var(--border)', color: 'var(--fg-2)' }}
-              >
-                <div className="pt-[2px]" style={{ color: 'var(--accent)' }}>
-                  <Icon name="target" size={12} />
-                </div>
-                <span className="flex-1">{lead.reason}</span>
-              </div>
-
-              {polishNote && (
-                <div
-                  className="mt-[8px] rounded-[6px] px-[10px] py-[6px] text-[11.5px]"
-                  style={{
-                    background: 'color-mix(in oklab, var(--accent), transparent 88%)',
-                    color: 'var(--accent)',
-                    border: '1px solid color-mix(in oklab, var(--accent), transparent 60%)'
-                  }}
-                >
-                  ✨ {polishNote}
-                </div>
-              )}
 
               {!sentChannel && (
                 <div
                   className="mt-[10px] flex gap-[6px] rounded-[8px] p-[6px]"
-                  style={{ background: 'var(--bg-0)', border: '1px solid var(--border)' }}
+                  style={{ background: 'var(--bg-0)', border: '1px solid var(--accent-soft)' }}
                 >
                   <div
                     className="grid h-[26px] w-[26px] place-items-center rounded-md flex-shrink-0"
                     style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
                   >
-                    <Icon name="pencil" size={12} />
+                    <Icon name="sparkles" size={12} />
                   </div>
                   <input
                     type="text"
@@ -280,8 +262,8 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
                     }}
                     placeholder={
                       polishing
-                        ? 'Puliendo…'
-                        : 'Pule el SMS: dale las gracias · hazlo más corto · menos formal…'
+                        ? 'Puliendo con IA…'
+                        : 'Mejorar / pulir con IA: dale las gracias · hazlo más corto · menos formal…'
                     }
                     disabled={polishing}
                     className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none"
@@ -295,6 +277,19 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
                   >
                     {polishing ? '…' : 'Pulir'}
                   </button>
+                </div>
+              )}
+
+              {polishNote && (
+                <div
+                  className="mt-[8px] rounded-[6px] px-[10px] py-[6px] text-[11.5px]"
+                  style={{
+                    background: 'color-mix(in oklab, var(--accent), transparent 88%)',
+                    color: 'var(--accent)',
+                    border: '1px solid color-mix(in oklab, var(--accent), transparent 60%)'
+                  }}
+                >
+                  ✨ {polishNote}
                 </div>
               )}
 
@@ -314,7 +309,8 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
               <div className="mt-[10px] flex flex-wrap items-center gap-[6px]">
                 {sentChannel ? (
                   <span className="btn btn-sent">
-                    <Icon name="check" size={12} /> Enviado via GHL · {sentChannel === 'sms' ? 'SMS' : 'WhatsApp'} ·{' '}
+                    <Icon name="check" size={12} /> Enviado via GHL ·{' '}
+                    {sentChannel === 'sms' ? 'SMS' : 'WhatsApp'} ·{' '}
                     {new Date().toLocaleTimeString('es-MX', {
                       hour: '2-digit',
                       minute: '2-digit'
@@ -350,22 +346,68 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
                   </>
                 )}
               </div>
+
+              <details className="mt-[10px]">
+                <summary
+                  className="cursor-pointer text-[11px]"
+                  style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                >
+                  💡 Contexto del AI
+                </summary>
+                <div
+                  className="mt-[6px] text-[11.5px] leading-[1.5]"
+                  style={{ color: 'var(--fg-2)' }}
+                >
+                  {lead.reason}
+                </div>
+              </details>
             </div>
           ) : (
             <div
               className="mx-4 my-3 rounded-[10px] px-[14px] py-[12px] text-[12.5px]"
               style={{
-                background: 'var(--bg-2)',
-                border: '1px solid var(--border)',
-                color: 'var(--fg-1)'
+                background: 'linear-gradient(180deg, var(--bg-2), var(--bg-1))',
+                border: '1px solid var(--border-strong)'
               }}
             >
-              <div className="mb-[8px] flex items-start gap-[6px]">
-                <div className="pt-[1px]" style={{ color: 'var(--accent)' }}>
-                  <Icon name="target" size={12} />
-                </div>
-                <span className="flex-1">{lead.reason}</span>
+              <div
+                className="mb-[8px] flex items-center gap-[6px] text-[10.5px] font-bold uppercase tracking-[0.08em]"
+                style={{ color: 'var(--accent)' }}
+              >
+                <Icon name="sparkles" size={11} /> GENERAR SMS CON IA
               </div>
+
+              <div
+                className="mb-[10px] flex gap-[6px] rounded-[8px] p-[6px]"
+                style={{ background: 'var(--bg-0)', border: '1px solid var(--accent-soft)' }}
+              >
+                <div
+                  className="grid h-[26px] w-[26px] place-items-center rounded-md flex-shrink-0"
+                  style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                >
+                  <Icon name="pencil" size={12} />
+                </div>
+                <input
+                  type="text"
+                  value={instruction}
+                  onChange={e => setInstruction(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      proposeFromScratch(instruction);
+                    }
+                  }}
+                  placeholder={
+                    polishing
+                      ? 'Proponiendo…'
+                      : 'Guía opcional: tono cálido · dale las gracias · etc. (o vacío = automático)'
+                  }
+                  disabled={polishing}
+                  className="min-w-0 flex-1 bg-transparent text-[12.5px] outline-none"
+                  style={{ color: 'var(--fg-0)', fontFamily: 'inherit' }}
+                />
+              </div>
+
               {error && (
                 <div
                   className="mb-[8px] rounded-[6px] px-[10px] py-[6px] text-[11.5px]"
@@ -378,20 +420,37 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
                   ⚠️ {error}
                 </div>
               )}
+
               <div className="flex flex-wrap items-center gap-[6px]">
                 <button
                   type="button"
-                  onClick={proposeFromScratch}
+                  onClick={() => proposeFromScratch(instruction)}
                   disabled={polishing}
                   className="btn btn-primary"
                 >
                   <Icon name="sparkles" size={12} />
-                  {polishing ? 'Proponiendo…' : 'Proponer SMS con AI'}
+                  {polishing ? 'Proponiendo…' : 'Proponer SMS con IA'}
                 </button>
+                <div className="flex-1" />
                 <button type="button" onClick={onDismiss} className="btn btn-ghost">
                   <Icon name="x" size={12} /> Descartar
                 </button>
               </div>
+
+              <details className="mt-[10px]">
+                <summary
+                  className="cursor-pointer text-[11px]"
+                  style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                >
+                  💡 Contexto del AI
+                </summary>
+                <div
+                  className="mt-[6px] text-[11.5px] leading-[1.5]"
+                  style={{ color: 'var(--fg-2)' }}
+                >
+                  {lead.reason}
+                </div>
+              </details>
             </div>
           )}
         </>

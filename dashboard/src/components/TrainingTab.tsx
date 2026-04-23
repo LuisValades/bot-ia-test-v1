@@ -11,6 +11,23 @@ interface Msg {
   content: string;
   citations?: string[];
   feedback?: 'up' | 'down' | null;
+  chunks?: string[];
+}
+
+// Alejandra responde en bloque pero el bot live manda cada frase como SMS separado.
+// Partimos por líneas vacías (como el formato del prompt) para visualizar igual.
+function splitChunks(text: string): string[] {
+  const clean = text.replace(/\r\n/g, '\n').trim();
+  if (!clean) return [];
+  const parts = clean
+    .split(/\n\s*\n+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (parts.length > 1) return parts;
+  // fallback: split por enter simple si hay varios
+  const lines = clean.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length >= 3) return lines;
+  return [clean];
 }
 
 interface Section {
@@ -81,9 +98,16 @@ export default function TrainingTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error');
+      const chunks = splitChunks(data.reply || '');
       setMessages([
         ...next,
-        { role: 'assistant', content: data.reply, citations: data.citations || [], feedback: null }
+        {
+          role: 'assistant',
+          content: data.reply,
+          citations: data.citations || [],
+          feedback: null,
+          chunks
+        }
       ]);
     } catch (err: any) {
       setMessages([
@@ -664,6 +688,7 @@ function MessageBubble({
   onSeeSource: () => void;
 }) {
   const isUser = msg.role === 'user';
+  const chunks = !isUser && msg.chunks && msg.chunks.length > 1 ? msg.chunks : null;
   return (
     <div
       className={`flex max-w-[90%] gap-[10px] md:max-w-[82%] ${
@@ -682,27 +707,75 @@ function MessageBubble({
         {isUser ? 'L' : agentName[0]}
       </div>
       <div className="min-w-0 flex-1">
-        <div
-          className="rounded-[12px] px-[14px] py-[10px] text-[13.5px] leading-[1.5]"
-          style={{
-            background: isUser ? 'var(--accent)' : 'var(--bg-2)',
-            color: isUser ? 'var(--accent-ink)' : 'var(--fg-0)',
-            border: isUser ? 'none' : '1px solid var(--border)',
-            borderBottomRightRadius: isUser ? '4px' : undefined,
-            borderBottomLeftRadius: !isUser ? '4px' : undefined,
-            whiteSpace: 'pre-wrap'
-          }}
-        >
-          {!isUser && (
-            <div
-              className="mb-[3px] text-[11px] font-semibold"
-              style={{ color: 'var(--fg-2)' }}
-            >
-              {agentName}
-            </div>
-          )}
-          {msg.content}
-        </div>
+        {chunks ? (
+          <div className="flex flex-col gap-[4px]">
+            {chunks.map((c, i) => (
+              <div
+                key={i}
+                className="rounded-[12px] px-[14px] py-[10px] text-[13.5px] leading-[1.5]"
+                style={{
+                  background: 'var(--bg-2)',
+                  color: 'var(--fg-0)',
+                  border: '1px solid var(--border)',
+                  borderBottomLeftRadius: i === chunks.length - 1 ? '4px' : '12px',
+                  borderTopLeftRadius: i === 0 ? '12px' : '4px',
+                  whiteSpace: 'pre-wrap',
+                  animation: `msg-in 0.3s ${i * 0.08}s both cubic-bezier(0.22, 1, 0.36, 1)`
+                }}
+              >
+                {i === 0 && (
+                  <div
+                    className="mb-[3px] flex items-center gap-2 text-[11px] font-semibold"
+                    style={{ color: 'var(--fg-2)' }}
+                  >
+                    {agentName}
+                    <span
+                      className="rounded-[6px] px-[5px] py-[1px] text-[9px] uppercase tracking-[0.08em]"
+                      style={{
+                        background: 'var(--bg-3)',
+                        color: 'var(--fg-3)',
+                        fontFamily: 'var(--font-mono)'
+                      }}
+                    >
+                      SMS {i + 1}/{chunks.length}
+                    </span>
+                  </div>
+                )}
+                {i > 0 && (
+                  <div
+                    className="mb-[3px] text-[9px] uppercase tracking-[0.08em]"
+                    style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                  >
+                    SMS {i + 1}/{chunks.length}
+                  </div>
+                )}
+                {c}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="rounded-[12px] px-[14px] py-[10px] text-[13.5px] leading-[1.5]"
+            style={{
+              background: isUser ? 'var(--accent)' : 'var(--bg-2)',
+              color: isUser ? 'var(--accent-ink)' : 'var(--fg-0)',
+              border: isUser ? 'none' : '1px solid var(--border)',
+              borderBottomRightRadius: isUser ? '4px' : undefined,
+              borderBottomLeftRadius: !isUser ? '4px' : undefined,
+              whiteSpace: 'pre-wrap'
+            }}
+          >
+            {!isUser && (
+              <div
+                className="mb-[3px] text-[11px] font-semibold"
+                style={{ color: 'var(--fg-2)' }}
+              >
+                {agentName}
+              </div>
+            )}
+            {msg.content}
+          </div>
+        )}
 
         {!isUser && (
           <div

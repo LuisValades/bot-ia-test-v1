@@ -12,15 +12,19 @@ export function getGhlConfig() {
   return { token, locationId };
 }
 
-function ghlHeaders(token: string) {
+function ghlHeaders(token: string, version?: string) {
   return {
     Authorization: `Bearer ${token}`,
-    Version: GHL_API_VERSION,
+    Version: version || GHL_API_VERSION,
     Accept: 'application/json'
   };
 }
 
-export async function ghlGet<T = any>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
+export async function ghlGet<T = any>(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+  opts?: { version?: string }
+): Promise<T> {
   const { token } = getGhlConfig();
   const url = new URL(`${GHL_BASE_URL}${path}`);
   if (query) {
@@ -28,7 +32,10 @@ export async function ghlGet<T = any>(path: string, query?: Record<string, strin
       if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
     }
   }
-  const res = await fetch(url.toString(), { headers: ghlHeaders(token), cache: 'no-store' });
+  const res = await fetch(url.toString(), {
+    headers: ghlHeaders(token, opts?.version),
+    cache: 'no-store'
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`GHL GET ${path} → ${res.status}: ${text.slice(0, 200)}`);
@@ -36,11 +43,11 @@ export async function ghlGet<T = any>(path: string, query?: Record<string, strin
   return res.json() as Promise<T>;
 }
 
-export async function ghlPost<T = any>(path: string, body: any): Promise<T> {
+export async function ghlPost<T = any>(path: string, body: any, opts?: { version?: string }): Promise<T> {
   const { token } = getGhlConfig();
   const res = await fetch(`${GHL_BASE_URL}${path}`, {
     method: 'POST',
-    headers: { ...ghlHeaders(token), 'Content-Type': 'application/json' },
+    headers: { ...ghlHeaders(token, opts?.version), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     cache: 'no-store'
   });
