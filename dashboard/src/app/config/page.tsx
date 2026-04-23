@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import PageHeader from '@/components/PageHeader';
+import AppShell from '@/components/AppShell';
 
 interface ConfigData {
   model: string;
@@ -49,30 +49,30 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <PageHeader title="Configuración" subtitle="Controles del Trainer en tiempo de ejecución" />
-
-      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
+    <AppShell title="Configuración" subtitle="Controles del Trainer en tiempo de ejecución">
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         {loading ? (
-          <div className="text-center text-sm text-slate-500">Cargando…</div>
+          <div className="text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+            Cargando…
+          </div>
         ) : !cfg ? (
-          <div className="text-center text-sm text-slate-500">
-            No pude contactar al Trainer en <code>{process.env.TRAINER_URL || 'http://localhost:4000'}</code>
+          <div className="text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+            No pude contactar al Trainer.
           </div>
         ) : (
-          <div className="max-w-2xl space-y-6">
-            <section className="card p-6">
-              <h2 className="mb-4 text-base font-semibold">Estado del Trainer</h2>
-              <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-                <InfoRow label="URL">{cfg.trainerUrl}</InfoRow>
-                <InfoRow label="Modelo OpenRouter">{cfg.model}</InfoRow>
+          <div className="max-w-2xl space-y-4">
+            <section className="card p-[16px]">
+              <h2 className="mb-3 text-[14px] font-semibold">Estado del Trainer</h2>
+              <dl className="grid grid-cols-1 gap-3 text-[13px] sm:grid-cols-2">
+                <Info label="URL">{cfg.trainerUrl}</Info>
+                <Info label="Modelo">{cfg.model}</Info>
               </dl>
             </section>
 
-            <section className="card p-6">
-              <h2 className="mb-1 text-base font-semibold">Auto-commit</h2>
-              <p className="mb-4 text-sm text-slate-500">
-                Cuando se aplique un patch, automáticamente hacer commit del cambio.
+            <section className="card p-[16px]">
+              <h2 className="mb-1 text-[14px] font-semibold">Auto-commit</h2>
+              <p className="mb-3 text-[12.5px]" style={{ color: 'var(--fg-2)' }}>
+                Commit automático al aplicar patch.
               </p>
               <Toggle
                 checked={cfg.autoCommit}
@@ -81,58 +81,40 @@ export default function ConfigPage() {
                 labelOn="Activado"
                 labelOff="Desactivado"
               />
-              <p className="mt-2 text-xs text-slate-400">
-                Env default: <code>{cfg.envAutoCommit ? 'true' : 'false'}</code>
-              </p>
             </section>
 
-            <section className="card p-6">
-              <h2 className="mb-1 text-base font-semibold">Auto-push</h2>
-              <p className="mb-4 text-sm text-slate-500">
-                Después del commit, hacer push al repo remoto (GitHub → Modal redeploya en producción).
+            <section className="card p-[16px]">
+              <h2 className="mb-1 text-[14px] font-semibold">Auto-push</h2>
+              <p className="mb-3 text-[12.5px]" style={{ color: 'var(--fg-2)' }}>
+                Push automático tras commit.
               </p>
               <Toggle
                 checked={cfg.autoPush}
                 onChange={v => toggle('autoPush', v)}
                 disabled={saving}
-                labelOn="🚀 Activado — producción se actualiza al instante"
-                labelOff="⏸ Desactivado — cambios solo locales"
+                labelOn="🚀 Activado — prod se actualiza"
+                labelOff="⏸ Desactivado — solo local"
               />
-              <p className="mt-2 text-xs text-slate-400">
-                Env default: <code>{cfg.envAutoPush ? 'true' : 'false'}</code>
-              </p>
-              {cfg.autoPush && (
-                <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  ⚠️ Cuando esto está activado, cada 👎 que aceptes se sube a GitHub y Modal redeploya
-                  Alejandra en producción inmediatamente.
-                </div>
-              )}
-            </section>
-
-            <section className="card p-6">
-              <h2 className="mb-4 text-base font-semibold">Cambiar defaults permanentemente</h2>
-              <p className="text-sm text-slate-500">
-                El toggle de arriba solo dura hasta que reinicies el Trainer. Para que persista, edita{' '}
-                <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">trainer/.env</code>:
-              </p>
-              <pre className="mt-3 rounded-md bg-slate-900 p-4 text-xs text-slate-100">
-{`GIT_AUTO_COMMIT=true
-GIT_AUTO_PUSH=true`}
-              </pre>
-              <p className="mt-2 text-xs text-slate-400">Luego reinicia: <code>npm run dev</code></p>
             </section>
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }
 
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+function Info({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase text-slate-500">{label}</dt>
-      <dd className="font-mono text-sm">{children}</dd>
+      <dt
+        className="text-[10.5px] uppercase tracking-[0.05em]"
+        style={{ color: 'var(--fg-2)' }}
+      >
+        {label}
+      </dt>
+      <dd className="text-[13px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--fg-0)' }}>
+        {children}
+      </dd>
     </div>
   );
 }
@@ -155,21 +137,27 @@ function Toggle({
       type="button"
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-        checked
-          ? 'border-green-300 bg-green-50 text-green-800'
-          : 'border-slate-300 bg-slate-50 text-slate-700'
-      } ${disabled ? 'cursor-wait opacity-60' : 'hover:shadow'}`}
+      className="flex items-center gap-[12px] rounded-[10px] px-[14px] py-[10px] text-[13px] font-medium"
+      style={{
+        border: `1px solid ${checked ? 'var(--success)' : 'var(--border)'}`,
+        background: checked ? 'color-mix(in oklab, var(--success), transparent 82%)' : 'var(--bg-1)',
+        color: checked ? 'var(--success)' : 'var(--fg-1)',
+        cursor: disabled ? 'wait' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        fontFamily: 'inherit'
+      }}
     >
       <span
-        className={`inline-block h-5 w-9 rounded-full transition ${
-          checked ? 'bg-green-500' : 'bg-slate-300'
-        } relative`}
+        className="relative inline-block h-[18px] w-[32px] rounded-full"
+        style={{ background: checked ? 'var(--success)' : 'var(--bg-3)' }}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${
-            checked ? 'left-[18px]' : 'left-0.5'
-          }`}
+          className="absolute top-[2px] h-[14px] w-[14px] rounded-full"
+          style={{
+            background: 'var(--bg-0)',
+            left: checked ? '16px' : '2px',
+            transition: 'left 0.15s ease'
+          }}
         />
       </span>
       <span>{checked ? labelOn : labelOff}</span>

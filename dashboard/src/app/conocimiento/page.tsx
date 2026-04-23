@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import PageHeader from '@/components/PageHeader';
-import AgentPicker from '@/components/AgentPicker';
-import { AGENTS, type Agent } from '@/lib/agents';
+import { useEffect, useMemo, useState } from 'react';
+import AppShell from '@/components/AppShell';
+import Icon from '@/components/Icon';
+import { useApp } from '@/lib/app-context';
 
 interface Section {
   level: number;
@@ -20,7 +20,7 @@ interface FileData {
 }
 
 export default function ConocimientoPage() {
-  const [agent, setAgent] = useState<Agent>(AGENTS[0]);
+  const { agent } = useApp();
   const [activeFile, setActiveFile] = useState<'knowledge' | 'prompt'>('knowledge');
   const [knowledge, setKnowledge] = useState<FileData | null>(null);
   const [prompt, setPrompt] = useState<FileData | null>(null);
@@ -40,9 +40,9 @@ export default function ConocimientoPage() {
     setLoading(true);
     fetch(`/api/knowledge-sections?agent=${agent.id}`)
       .then(r => r.json())
-      .then(data => {
-        setKnowledge(data.knowledge);
-        setPrompt(data.prompt);
+      .then(d => {
+        setKnowledge(d.knowledge);
+        setPrompt(d.prompt);
       })
       .catch(() => {
         setKnowledge(null);
@@ -62,9 +62,9 @@ export default function ConocimientoPage() {
     );
   }, [current, search]);
 
-  const openEdit = (section: Section) => {
-    setEditing(section);
-    setEditBody(section.body);
+  const openEdit = (s: Section) => {
+    setEditing(s);
+    setEditBody(s.body);
   };
 
   const saveEdit = async () => {
@@ -82,19 +82,12 @@ export default function ConocimientoPage() {
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error guardando');
-
-      // refresh
+      if (!res.ok) throw new Error(data.error || 'Error');
       const r2 = await fetch(`/api/knowledge-sections?agent=${agent.id}`);
       const d2 = await r2.json();
       setKnowledge(d2.knowledge);
       setPrompt(d2.prompt);
       setEditing(null);
-
-      let msg = `✅ Sección "${editing.title}" actualizada`;
-      if (data.git?.committed) msg += `\ncommit ${data.git.commitSha?.slice(0, 7)}`;
-      if (data.git?.pushed) msg += ' + push GitHub';
-      alert(msg);
     } catch (err: any) {
       alert(`⚠️ ${err.message}`);
     } finally {
@@ -103,108 +96,96 @@ export default function ConocimientoPage() {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <PageHeader
-        title="Conocimiento"
-        subtitle="Visualiza y edita el prompt + knowledge.md del agente"
-      />
-
-      <div className="border-b bg-white px-4 py-4 md:px-8">
-        <AgentPicker value={agent.id} onChange={setAgent} />
-      </div>
-
-      <div className="border-b bg-white px-4 md:px-8">
-        <div className="flex gap-1">
-          <FileTab active={activeFile === 'knowledge'} onClick={() => setActiveFile('knowledge')}>
-            📚 Knowledge{knowledge ? ` (${knowledge.sections.length})` : ''}
-          </FileTab>
-          <FileTab active={activeFile === 'prompt'} onClick={() => setActiveFile('prompt')}>
-            📝 Prompt{prompt ? ` (${prompt.sections.length})` : ''}
-          </FileTab>
-        </div>
-      </div>
-
-      <div className="border-b bg-white px-4 py-3 md:px-8">
+    <AppShell title="Conocimiento" subtitle={`${agent.name} · agentes/${agent.id}/`}>
+      <div
+        className="flex gap-2 px-4 py-3 md:px-6"
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-0)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveFile('knowledge')}
+          className="btn"
+          style={
+            activeFile === 'knowledge'
+              ? { background: 'var(--bg-3)', color: 'var(--fg-0)' }
+              : {}
+          }
+        >
+          📚 knowledge{knowledge ? ` (${knowledge.sections.length})` : ''}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveFile('prompt')}
+          className="btn"
+          style={
+            activeFile === 'prompt' ? { background: 'var(--bg-3)', color: 'var(--fg-0)' } : {}
+          }
+        >
+          📝 system-prompt{prompt ? ` (${prompt.sections.length})` : ''}
+        </button>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Buscar sección…"
-          className="w-full max-w-md rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="ml-auto w-full max-w-[280px] rounded-[8px] px-[12px] py-[6px] text-[13px] outline-none"
+          style={{
+            background: 'var(--bg-1)',
+            border: '1px solid var(--border)',
+            color: 'var(--fg-0)',
+            fontFamily: 'inherit'
+          }}
         />
       </div>
 
-      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         {loading ? (
-          <div className="text-center text-sm text-slate-500">Cargando…</div>
+          <div className="text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+            Cargando…
+          </div>
         ) : !current || current.sections.length === 0 ? (
-          <div className="text-center text-sm text-slate-500">
+          <div className="text-center text-sm" style={{ color: 'var(--fg-2)' }}>
             {agent.status === 'placeholder'
               ? `${agent.name} aún no tiene archivos.`
-              : 'Sin secciones que mostrar.'}
+              : 'Sin secciones.'}
           </div>
         ) : (
           <div className="card overflow-hidden">
-            <div className="overflow-x-auto md:block hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Nivel</th>
-                    <th className="px-4 py-3 text-left">Sección</th>
-                    <th className="px-4 py-3 text-left">Vista previa</th>
-                    <th className="px-4 py-3 text-right">Caracteres</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filtered.map((s, i) => (
-                    <tr key={i} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                          H{s.level}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-900">{s.title}</td>
-                      <td className="max-w-md truncate px-4 py-3 text-slate-500">{s.preview}</td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-slate-500">
-                        {s.body.length.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => openEdit(s)}
-                          className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          ✏️ Editar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <ul className="divide-y md:hidden">
+            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {filtered.map((s, i) => (
-                <li key={i} className="p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                          H{s.level}
-                        </span>
-                        <span className="font-mono text-[10px] text-slate-500">
-                          {s.body.length.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="break-words text-sm font-medium text-slate-900">{s.title}</div>
-                      <div className="mt-1 line-clamp-2 text-xs text-slate-500">{s.preview}</div>
-                    </div>
-                    <button
-                      onClick={() => openEdit(s)}
-                      className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                <li key={i} className="flex items-start gap-[10px] px-4 py-[10px]">
+                  <span
+                    className="mt-[3px] rounded-[4px] px-[6px] py-[2px] text-[10px] font-semibold"
+                    style={{
+                      background: 'var(--bg-2)',
+                      color: 'var(--fg-1)',
+                      fontFamily: 'var(--font-mono)'
+                    }}
+                  >
+                    H{s.level}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className="text-[13px] font-medium"
+                      style={{ color: 'var(--fg-0)' }}
                     >
-                      ✏️
-                    </button>
+                      {s.title}
+                    </div>
+                    <div
+                      className="mt-[2px] truncate text-[11.5px]"
+                      style={{ color: 'var(--fg-2)' }}
+                    >
+                      {s.preview}
+                    </div>
                   </div>
+                  <span
+                    className="whitespace-nowrap text-[10.5px]"
+                    style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                  >
+                    {s.body.length.toLocaleString()}
+                  </span>
+                  <button type="button" onClick={() => openEdit(s)} className="btn">
+                    <Icon name="pencil" size={11} /> Editar
+                  </button>
                 </li>
               ))}
             </ul>
@@ -213,43 +194,66 @@ export default function ConocimientoPage() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-4">
-          <div className="flex h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-lg bg-white shadow-2xl md:h-[85vh] md:rounded-lg">
-            <header className="flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base font-semibold md:text-lg">Editar sección</h2>
-                <p className="truncate text-xs text-slate-500">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 md:items-center md:p-4">
+          <div
+            className="flex h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[14px] md:h-[85vh] md:rounded-[14px]"
+            style={{
+              background: 'var(--bg-1)',
+              border: '1px solid var(--border-strong)',
+              boxShadow: 'var(--shadow-lg)'
+            }}
+          >
+            <header
+              className="flex items-center justify-between px-4 py-[12px] md:px-6 md:py-[14px]"
+              style={{ borderBottom: '1px solid var(--border)' }}
+            >
+              <div className="min-w-0">
+                <h2 className="text-[15px] font-semibold md:text-[17px]">Editar sección</h2>
+                <p
+                  className="truncate text-[11.5px]"
+                  style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
+                >
                   {activeFile}.md · H{editing.level} · {editing.title}
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setEditing(null)}
-                className="ml-2 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="btn btn-ghost"
               >
-                ✕
+                <Icon name="x" size={14} />
               </button>
             </header>
             <textarea
               value={editBody}
               onChange={e => setEditBody(e.target.value)}
-              className="flex-1 resize-none p-4 font-mono text-sm focus:outline-none md:p-6"
-              placeholder="Contenido de la sección…"
+              className="flex-1 resize-none p-4 text-[13px] leading-[1.55] outline-none md:p-6"
+              style={{
+                background: 'var(--bg-0)',
+                color: 'var(--fg-0)',
+                fontFamily: 'var(--font-mono)',
+                border: 'none'
+              }}
             />
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 md:px-6">
-              <span className="text-xs text-slate-500">
-                {editBody.length.toLocaleString()} caracteres
+            <footer
+              className="flex flex-wrap items-center justify-between gap-[8px] px-4 py-[10px] md:px-6"
+              style={{ borderTop: '1px solid var(--border)' }}
+            >
+              <span
+                className="text-[11.5px]"
+                style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
+              >
+                {editBody.length.toLocaleString()} chars
               </span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => setEditing(null)}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 md:px-4"
-                >
+                <button type="button" onClick={() => setEditing(null)} className="btn">
                   Cancelar
                 </button>
                 <button
+                  type="button"
                   onClick={saveEdit}
                   disabled={saving || editBody === editing.body}
-                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:px-4"
+                  className="btn btn-primary"
                 >
                   {saving ? 'Guardando…' : '💾 Guardar'}
                 </button>
@@ -258,29 +262,6 @@ export default function ConocimientoPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function FileTab({
-  active,
-  onClick,
-  children
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-3 text-sm font-medium transition ${
-        active
-          ? 'border-b-2 border-blue-600 text-blue-700'
-          : 'border-b-2 border-transparent text-slate-600 hover:text-slate-900'
-      }`}
-    >
-      {children}
-    </button>
+    </AppShell>
   );
 }

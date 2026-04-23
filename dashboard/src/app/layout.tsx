@@ -1,10 +1,23 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import Sidebar from '@/components/Sidebar';
+import { AppProvider } from '@/lib/app-context';
+
+const interTight = Inter_Tight({
+  subsets: ['latin'],
+  variable: '--font-ui',
+  display: 'swap'
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap'
+});
 
 export const metadata: Metadata = {
-  title: 'Crediexpres Agentes — Entrenamiento',
-  description: 'Dashboard para entrenar los agentes conversacionales de GHL'
+  title: 'Crediexpres · Agentes GHL',
+  description: 'Dashboard de entrenamiento y actividades de asesores'
 };
 
 export const viewport: Viewport = {
@@ -15,12 +28,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" data-theme="dark" className={`${interTight.variable} ${jetbrains.variable}`}>
       <body>
-        <div className="flex h-screen">
-          <Sidebar />
-          <main className="min-w-0 flex-1 overflow-hidden">{children}</main>
-        </div>
+        <AppProvider>{children}</AppProvider>
       </body>
     </html>
   );

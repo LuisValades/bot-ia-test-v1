@@ -3,18 +3,28 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Icon from './Icon';
+import { AGENTS } from '@/lib/agents';
+import { useApp } from '@/lib/app-context';
 
-const items = [
-  { href: '/', label: 'Inicio', icon: '🏠' },
-  { href: '/entrenar', label: 'Entrenar', icon: '🎯' },
-  { href: '/conocimiento', label: 'Conocimiento', icon: '📚' },
-  { href: '/metricas', label: 'Métricas', icon: '📊' },
-  { href: '/historial', label: 'Historial', icon: '📜' },
-  { href: '/config', label: 'Configuración', icon: '⚙️' }
+const navItems = [
+  { href: '/', label: 'Inicio', icon: 'home' as const },
+  { href: '/entrenar', label: 'Entrenar', icon: 'chat' as const },
+  { href: '/conocimiento', label: 'Conocimiento', icon: 'book' as const },
+  { href: '/metricas', label: 'Métricas', icon: 'chart' as const },
+  { href: '/historial', label: 'Historial', icon: 'note' as const },
+  { href: '/config', label: 'Configuración', icon: 'settings' as const }
 ];
+
+const agentColors: Record<string, string> = {
+  alejandra: 'linear-gradient(135deg, oklch(0.75 0.14 200), oklch(0.65 0.17 250))',
+  'agente-2': 'linear-gradient(135deg, oklch(0.78 0.14 155), oklch(0.70 0.15 195))',
+  'agente-3': 'linear-gradient(135deg, oklch(0.78 0.14 355), oklch(0.72 0.15 30))'
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { agent: activeAgent, setAgentId } = useApp();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -22,11 +32,7 @@ export default function Sidebar() {
   }, [pathname]);
 
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = open ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
@@ -38,72 +44,182 @@ export default function Sidebar() {
         type="button"
         aria-label="Abrir menú"
         onClick={() => setOpen(true)}
-        className="fixed left-3 top-3 z-40 grid h-10 w-10 place-items-center rounded-md border border-slate-200 bg-white text-slate-700 shadow-sm md:hidden"
+        className="fixed left-3 top-3 z-40 grid h-10 w-10 place-items-center rounded-md md:hidden"
+        style={{
+          border: '1px solid var(--border)',
+          background: 'var(--bg-1)',
+          color: 'var(--fg-1)',
+          boxShadow: 'var(--shadow-sm)'
+        }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </svg>
+        <Icon name="menu" size={18} />
       </button>
 
       {open && (
         <div
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-shrink-0 flex-col text-slate-200 transition-transform duration-200 md:static md:translate-x-0 ${
-          open ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-shrink-0 flex-col transition-transform duration-200 md:static md:translate-x-0 ${
+          open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
-        style={{ background: 'var(--sidebar-bg)' }}
+        style={{
+          background: 'var(--bg-1)',
+          borderRight: '1px solid var(--border)'
+        }}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-6">
-          <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-lg font-bold">C</div>
+        <div
+          className="flex items-center justify-between px-[18px] py-[18px]"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <div className="flex items-center gap-[10px]">
+            <div
+              className="grid h-[30px] w-[30px] place-items-center rounded-lg text-sm font-bold"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent) 0%, var(--violet) 100%)',
+                color: 'var(--accent-ink)',
+                boxShadow: '0 0 0 1px var(--border-strong) inset, 0 0 18px var(--accent-glow)'
+              }}
+            >
+              C
+            </div>
             <div>
-              <div className="text-sm font-semibold text-white">Crediexpres</div>
-              <div className="text-xs text-slate-400">Agentes GHL</div>
+              <div className="text-sm font-semibold leading-tight" style={{ color: 'var(--fg-0)' }}>
+                Crediexpres
+              </div>
+              <div
+                className="mt-[2px] text-[11px]"
+                style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}
+              >
+                hipotecario · pyme · ghl
+              </div>
             </div>
           </div>
           <button
             type="button"
             aria-label="Cerrar menú"
             onClick={() => setOpen(false)}
-            className="grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
+            className="grid h-8 w-8 place-items-center rounded-md md:hidden"
+            style={{ color: 'var(--fg-2)' }}
           >
-            ✕
+            <Icon name="x" size={14} />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {items.map(item => {
-            const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+        <div
+          className="px-[14px] pb-[6px] pt-[16px] text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+          style={{ color: 'var(--fg-3)' }}
+        >
+          Espacio
+        </div>
+        <div className="flex flex-col gap-[1px] px-2 py-[2px]">
+          {navItems.map(item => {
+            const active =
+              item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                  active
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
+                className="relative flex cursor-pointer select-none items-center gap-[10px] rounded-[6px] px-[14px] py-2 text-[13.5px]"
+                style={{
+                  background: active ? 'var(--bg-3)' : 'transparent',
+                  color: active ? 'var(--fg-0)' : 'var(--fg-1)'
+                }}
               >
-                <span className="text-base">{item.icon}</span>
+                {active && (
+                  <span
+                    className="absolute -left-2 top-[6px] bottom-[6px] w-[2px] rounded"
+                    style={{ background: 'var(--accent)' }}
+                  />
+                )}
+                <Icon name={item.icon} size={16} />
                 <span>{item.label}</span>
               </Link>
             );
           })}
-        </nav>
+        </div>
 
-        <div className="border-t border-slate-800 px-5 py-4 text-xs text-slate-400">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-green-400"></span>
-            <span>Trainer activo :4000</span>
+        <div
+          className="px-[14px] pb-[6px] pt-[16px] text-[10.5px] font-semibold uppercase tracking-[0.08em]"
+          style={{ color: 'var(--fg-3)' }}
+        >
+          Agentes ({AGENTS.length})
+        </div>
+        <div className="flex-1 overflow-y-auto pb-3">
+          {AGENTS.map(a => {
+            const isActive = activeAgent.id === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setAgentId(a.id)}
+                className="mx-[10px] my-[2px] flex w-[calc(100%-20px)] cursor-pointer items-center gap-[10px] rounded-[10px] px-[12px] py-[10px] transition-all"
+                style={{
+                  background: isActive ? 'var(--bg-2)' : 'transparent',
+                  border: `1px solid ${isActive ? 'var(--border-strong)' : 'transparent'}`,
+                  boxShadow: isActive ? 'var(--shadow-sm)' : 'none'
+                }}
+              >
+                <div
+                  className="relative grid h-[34px] w-[34px] flex-shrink-0 place-items-center rounded-[10px] text-[13px] font-semibold text-white"
+                  style={{ background: agentColors[a.id] || agentColors.alejandra }}
+                >
+                  {a.name[0]}
+                  <span
+                    className="absolute -bottom-[1px] -right-[1px] h-[9px] w-[9px] rounded-full"
+                    style={{
+                      background: a.status === 'production' ? 'var(--success)' : 'var(--fg-3)',
+                      border: '2px solid var(--bg-1)'
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <div
+                    className="truncate text-[13px] font-medium"
+                    style={{ color: 'var(--fg-0)' }}
+                  >
+                    {a.name}
+                  </div>
+                  <div
+                    className="text-[11px]"
+                    style={{
+                      color: 'var(--fg-2)',
+                      fontFamily: 'var(--font-mono)',
+                      letterSpacing: '-0.02em'
+                    }}
+                  >
+                    {a.description}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          className="flex items-center gap-[10px] px-[14px] py-[12px]"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          <div
+            className="grid h-[30px] w-[30px] place-items-center rounded-full text-xs font-semibold text-white"
+            style={{ background: 'linear-gradient(135deg, var(--violet), var(--pink))' }}
+          >
+            L
           </div>
+          <div className="flex-1">
+            <div className="text-[13px] font-medium">Luis V.</div>
+            <div
+              className="text-[11px]"
+              style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
+            >
+              Admin · Crediexpres
+            </div>
+          </div>
+          <Icon name="settings" size={14} />
         </div>
       </aside>
     </>

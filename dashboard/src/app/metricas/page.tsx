@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import PageHeader from '@/components/PageHeader';
+import AppShell from '@/components/AppShell';
 import { AGENTS } from '@/lib/agents';
 
 interface Metrics {
@@ -25,92 +25,91 @@ export default function MetricasPage() {
   }, []);
 
   const days = metrics
-    ? Object.entries(metrics.byDay)
-        .sort(([a], [b]) => b.localeCompare(a))
-        .slice(0, 14)
+    ? Object.entries(metrics.byDay).sort(([a], [b]) => b.localeCompare(a)).slice(0, 14)
     : [];
 
-  const ratio = metrics && metrics.totalFeedback > 0
-    ? Math.round((metrics.good / metrics.totalFeedback) * 100)
-    : 0;
+  const ratio =
+    metrics && metrics.totalFeedback > 0
+      ? Math.round((metrics.good / metrics.totalFeedback) * 100)
+      : 0;
 
   return (
-    <div className="flex h-full flex-col">
-      <PageHeader title="Métricas" subtitle="Resumen de feedback humano dado a los agentes" />
-
-      <div className="scroll-fade flex-1 overflow-y-auto p-4 md:p-8">
+    <AppShell title="Métricas" subtitle="Feedback humano dado a los agentes">
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         {loading ? (
-          <div className="text-center text-sm text-slate-500">Cargando…</div>
+          <div className="text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+            Cargando…
+          </div>
         ) : !metrics ? (
-          <div className="text-center text-sm text-slate-500">Sin datos todavía.</div>
+          <div className="text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+            Sin datos.
+          </div>
         ) : (
           <>
-            <section className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+            <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
               <BigStat label="Feedback total" value={metrics.totalFeedback} />
-              <BigStat label="👍 Buenas" value={metrics.good} color="green" />
-              <BigStat label="👎 Mejorar" value={metrics.bad} color="red" />
-              <BigStat label="% aprobación" value={`${ratio}%`} color="blue" />
+              <BigStat label="👍 Buenas" value={metrics.good} color="var(--success)" />
+              <BigStat label="👎 Mejorar" value={metrics.bad} color="var(--danger)" />
+              <BigStat label="% aprobación" value={`${ratio}%`} color="var(--accent)" />
             </section>
 
-            <section className="mb-8">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            <section className="mb-6">
+              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--fg-3)' }}>
                 Por agente
               </h2>
-              <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <div className="card overflow-hidden overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead style={{ background: 'var(--bg-2)', color: 'var(--fg-3)' }}>
                     <tr>
-                      <th className="px-4 py-3 text-left">Agente</th>
-                      <th className="px-4 py-3 text-right">👍 Buenas</th>
-                      <th className="px-4 py-3 text-right">👎 Mejorar</th>
-                      <th className="px-4 py-3 text-right">Total</th>
-                      <th className="px-4 py-3 text-right">% aprobación</th>
+                      <th className="px-4 py-[10px] text-left text-[11px] uppercase">Agente</th>
+                      <th className="px-4 py-[10px] text-right text-[11px] uppercase">👍</th>
+                      <th className="px-4 py-[10px] text-right text-[11px] uppercase">👎</th>
+                      <th className="px-4 py-[10px] text-right text-[11px] uppercase">Total</th>
+                      <th className="px-4 py-[10px] text-right text-[11px] uppercase">%</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
-                    {AGENTS.map(agent => {
-                      const s = metrics.byAgent[agent.id] || { good: 0, bad: 0 };
+                  <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                    {AGENTS.map(a => {
+                      const s = metrics.byAgent[a.id] || { good: 0, bad: 0 };
                       const total = s.good + s.bad;
                       const pct = total > 0 ? Math.round((s.good / total) * 100) : 0;
                       return (
-                        <tr key={agent.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium">
-                            <span className="mr-2">{agent.emoji}</span>
-                            {agent.name}
+                        <tr key={a.id}>
+                          <td className="px-4 py-[10px] font-medium">{a.name}</td>
+                          <td className="px-4 py-[10px] text-right" style={{ color: 'var(--success)' }}>
+                            {s.good}
                           </td>
-                          <td className="px-4 py-3 text-right text-green-600">{s.good}</td>
-                          <td className="px-4 py-3 text-right text-red-600">{s.bad}</td>
-                          <td className="px-4 py-3 text-right font-semibold">{total}</td>
-                          <td className="px-4 py-3 text-right">{total > 0 ? `${pct}%` : '—'}</td>
+                          <td className="px-4 py-[10px] text-right" style={{ color: 'var(--danger)' }}>
+                            {s.bad}
+                          </td>
+                          <td className="px-4 py-[10px] text-right font-semibold">{total}</td>
+                          <td className="px-4 py-[10px] text-right">{total > 0 ? `${pct}%` : '—'}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-                </div>
               </div>
             </section>
 
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--fg-3)' }}>
                 Últimos 14 días
               </h2>
-              <div className="card overflow-hidden">
-                <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <div className="card overflow-hidden overflow-x-auto">
+                <table className="w-full text-[13px]">
+                  <thead style={{ background: 'var(--bg-2)', color: 'var(--fg-3)' }}>
                     <tr>
-                      <th className="px-4 py-3 text-left">Fecha</th>
-                      <th className="px-4 py-3 text-right">👍</th>
-                      <th className="px-4 py-3 text-right">👎</th>
-                      <th className="px-4 py-3">Distribución</th>
+                      <th className="px-4 py-[10px] text-left text-[11px] uppercase">Fecha</th>
+                      <th className="px-4 py-[10px] text-right text-[11px] uppercase">👍</th>
+                      <th className="px-4 py-[10px] text-right text-[11px] uppercase">👎</th>
+                      <th className="px-4 py-[10px] text-left text-[11px] uppercase">Dist.</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
                     {days.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                        <td colSpan={4} className="px-4 py-6 text-center" style={{ color: 'var(--fg-2)' }}>
                           Aún no hay feedback registrado.
                         </td>
                       </tr>
@@ -119,15 +118,24 @@ export default function MetricasPage() {
                       const total = s.good + s.bad;
                       const goodPct = total > 0 ? (s.good / total) * 100 : 0;
                       return (
-                        <tr key={date} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-mono text-xs">{date}</td>
-                          <td className="px-4 py-3 text-right text-green-600">{s.good}</td>
-                          <td className="px-4 py-3 text-right text-red-600">{s.bad}</td>
-                          <td className="px-4 py-3">
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                        <tr key={date}>
+                          <td className="px-4 py-[10px]" style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}>
+                            {date}
+                          </td>
+                          <td className="px-4 py-[10px] text-right" style={{ color: 'var(--success)' }}>
+                            {s.good}
+                          </td>
+                          <td className="px-4 py-[10px] text-right" style={{ color: 'var(--danger)' }}>
+                            {s.bad}
+                          </td>
+                          <td className="px-4 py-[10px]">
+                            <div
+                              className="h-[6px] w-full overflow-hidden rounded-full"
+                              style={{ background: 'var(--bg-3)' }}
+                            >
                               <div
-                                className="h-full bg-green-500"
-                                style={{ width: `${goodPct}%` }}
+                                className="h-full"
+                                style={{ width: `${goodPct}%`, background: 'var(--success)' }}
                               />
                             </div>
                           </td>
@@ -136,34 +144,22 @@ export default function MetricasPage() {
                     })}
                   </tbody>
                 </table>
-                </div>
               </div>
             </section>
           </>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }
 
-function BigStat({
-  label,
-  value,
-  color
-}: {
-  label: string;
-  value: number | string;
-  color?: 'green' | 'red' | 'blue';
-}) {
-  const colorMap: Record<string, string> = {
-    green: 'text-green-600',
-    red: 'text-red-600',
-    blue: 'text-blue-600'
-  };
+function BigStat({ label, value, color }: { label: string; value: number | string; color?: string }) {
   return (
-    <div className="card p-5">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className={`mt-1 text-3xl font-bold ${color ? colorMap[color] : 'text-slate-900'}`}>
+    <div className="card p-[14px]">
+      <div className="text-[11px] uppercase tracking-[0.05em]" style={{ color: 'var(--fg-2)' }}>
+        {label}
+      </div>
+      <div className="mt-[4px] text-[24px] font-semibold" style={{ color: color || 'var(--fg-0)', letterSpacing: '-0.02em' }}>
         {value}
       </div>
     </div>
