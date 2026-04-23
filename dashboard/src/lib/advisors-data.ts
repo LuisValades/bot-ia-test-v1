@@ -11,6 +11,7 @@ export interface ThreadMessage {
   who: string;
   msg: string;
   time: string;
+  type?: string; // "SMS" | "Email" | "WhatsApp" | "Instagram" | etc.
 }
 
 export type LeadTag = 'warm' | 'hot' | 'cold' | 'new';

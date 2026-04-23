@@ -190,15 +190,37 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
               color: 'var(--fg-1)'
             }}
           >
+            {lead.thread.length === 0 && (
+              <div
+                className="py-[4px] text-[11.5px] italic"
+                style={{ color: 'var(--fg-3)' }}
+              >
+                (sin mensajes recientes en este canal)
+              </div>
+            )}
             {lead.thread.map((t, i) => (
-              <div key={i} className="flex flex-wrap gap-2 py-[4px]">
-                <span
-                  className="min-w-[70px] pt-[2px] text-[10.5px] font-semibold uppercase tracking-[0.06em]"
-                  style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
-                >
-                  {t.who}
-                </span>
-                <span className="flex-1" style={{ color: 'var(--fg-1)' }}>
+              <div key={i} className="flex flex-wrap items-start gap-2 py-[4px]">
+                <div className="flex min-w-[96px] flex-wrap items-center gap-1 pt-[2px]">
+                  <span
+                    className="text-[10.5px] font-semibold uppercase tracking-[0.06em]"
+                    style={{ color: 'var(--fg-3)', fontFamily: 'var(--font-mono)' }}
+                  >
+                    {t.who}
+                  </span>
+                  {t.type && (
+                    <span
+                      className="rounded-[4px] px-[4px] py-[1px] text-[9px] font-semibold uppercase tracking-[0.05em]"
+                      style={{
+                        background: 'var(--bg-2)',
+                        color: 'var(--fg-2)',
+                        fontFamily: 'var(--font-mono)'
+                      }}
+                    >
+                      {t.type}
+                    </span>
+                  )}
+                </div>
+                <span className="flex-1 break-words" style={{ color: 'var(--fg-1)' }}>
                   {t.msg}
                 </span>
                 <span

@@ -92,4 +92,30 @@ export interface GhlMessage {
 // Message types from GHL:
 // 1 = call, 3 = email, 11 = whatsapp, 18 = instagram DM,
 // 20 = custom SMS (outbound nuestro), 37 = internal comment
-export const SMS_MESSAGE_TYPES = new Set([20, 11, 18]);
+
+// Mensajes "conversables" que mostramos en el thread del asesor.
+// Incluimos SMS, WhatsApp, IG y EMAIL — las llamadas y notas internas quedan fuera.
+export const THREAD_MESSAGE_TYPES = new Set([3, 11, 18, 20]);
+
+// Alias retrocompatible (antes era solo SMS/WA/IG).
+export const SMS_MESSAGE_TYPES = THREAD_MESSAGE_TYPES;
+
+// Nombre amigable del tipo para mostrar al usuario.
+export function typeLabel(type: number): string {
+  switch (type) {
+    case 1:
+      return 'Llamada';
+    case 3:
+      return 'Email';
+    case 11:
+      return 'WhatsApp';
+    case 18:
+      return 'Instagram';
+    case 20:
+      return 'SMS';
+    case 37:
+      return 'Nota interna';
+    default:
+      return 'Mensaje';
+  }
+}

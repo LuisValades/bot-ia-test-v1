@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getGhlConfig,
   ghlGet,
-  SMS_MESSAGE_TYPES,
+  THREAD_MESSAGE_TYPES,
+  typeLabel,
   type GhlConversation,
   type GhlMessage
 } from '@/lib/ghl-client';
@@ -99,14 +100,14 @@ export async function GET(req: NextRequest) {
     // Mapa userId → primer nombre, para saber quién escribió cada mensaje
     const userMap = await getUserMap();
 
-    // 2) Para cada conversación, traer últimos 5 mensajes y armar el hilo visible.
-    const leads = await Promise.all(
-      recent.slice(0, 12).map(async conv => {
+    // 2) Para cada conversación, traer últimos 15 mensajes y armar el hilo visible.
+    const leadsRaw = await Promise.all(
+      recent.slice(0, 15).map(async conv => {
         let messages: GhlMessage[] = [];
         try {
           const msgResp = await ghlGet<{ messages: { messages: GhlMessage[] } }>(
             `/conversations/${conv.id}/messages`,
-            { limit: 5 }
+            { limit: 15 }
           );
           messages = msgResp?.messages?.messages || [];
         } catch {
@@ -114,34 +115,53 @@ export async function GET(req: NextRequest) {
         }
 
         const leadDisplayName = conv.fullName || conv.contactName || 'Lead';
-        const thread = messages
-          .filter(m => SMS_MESSAGE_TYPES.has(m.type))
-          .slice(0, 5)
+        const whoOf = (m: GhlMessage): string => {
+          if (m.direction === 'inbound') return leadDisplayName;
+          if (m.userId && userMap[m.userId]) return userMap[m.userId];
+          if (m.source === 'workflow' || m.source === 'bot') return 'Alejandra (bot)';
+          return 'Asesor';
+        };
+
+        const threadFromMessages = messages
+          .filter(m => THREAD_MESSAGE_TYPES.has(m.type))
+          .slice(0, 6)
           .reverse()
-          .map(m => {
-            let who: string;
-            if (m.direction === 'inbound') {
-              who = leadDisplayName;
-            } else if (m.userId && userMap[m.userId]) {
-              who = userMap[m.userId];
-            } else if (m.source === 'workflow' || m.source === 'bot') {
-              who = 'Alejandra (bot)';
-            } else {
-              who = 'Asesor';
-            }
-            return {
-              who,
-              msg: (m.body || '').trim().slice(0, 280),
-              time: m.dateAdded
-                ? new Date(m.dateAdded).toLocaleString('es-MX', {
+          .map(m => ({
+            who: whoOf(m),
+            msg: (m.body || '').trim().slice(0, 320),
+            type: typeLabel(m.type),
+            time: m.dateAdded
+              ? new Date(m.dateAdded).toLocaleString('es-MX', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  day: '2-digit',
+                  month: 'short'
+                })
+              : ''
+          }));
+
+        // Fallback: si el thread quedó vacío (ej. todos los mensajes son
+        // llamadas o notas internas), usamos el lastMessageBody de la convo.
+        let thread = threadFromMessages;
+        if (thread.length === 0 && conv.lastMessageBody) {
+          thread = [
+            {
+              who: conv.lastMessageDirection === 'inbound' ? leadDisplayName : 'Asesor',
+              msg: conv.lastMessageBody.trim().slice(0, 320),
+              type: typeLabel(
+                Number(String(conv.lastMessageType || '').replace('TYPE_', '').match(/\d+/)?.[0]) || 0
+              ),
+              time: conv.lastMessageDate
+                ? new Date(conv.lastMessageDate).toLocaleString('es-MX', {
                     hour: '2-digit',
                     minute: '2-digit',
                     day: '2-digit',
                     month: 'short'
                   })
                 : ''
-            };
-          });
+            }
+          ];
+        }
 
         const lastDate = conv.lastMessageDate ? new Date(conv.lastMessageDate) : new Date();
         const ageMin = Math.floor((now - lastDate.getTime()) / 60000);
@@ -163,16 +183,22 @@ export async function GET(req: NextRequest) {
           lastMessageAgeMin: ageMin,
           lastMessageDirection: conv.lastMessageDirection || null,
           suggestion: null, // se genera on-demand desde UI
-          reason: `Último mensaje: ${ageMin} min. Dirección: ${conv.lastMessageDirection || 'n/a'}. Unread: ${conv.unreadCount || 0}.`
+          reason: `Último mensaje: ${ageMin} min · dirección ${conv.lastMessageDirection || 'n/a'} · unread ${conv.unreadCount || 0}. Canal: ${typeLabel(
+            Number(String(conv.lastMessageType || '').replace('TYPE_', '').match(/\d+/)?.[0]) || 0
+          )}.`
         };
       })
     );
+
+    // Filtrar leads sin contenido (sin thread y sin phone = inutilizables).
+    const leads = leadsRaw.filter(l => l.thread.length > 0 && (l.phone || l.ghlContactId));
 
     return NextResponse.json({
       advisorId,
       locationId,
       count: leads.length,
       totalFound: conversations.length,
+      hidden: leadsRaw.length - leads.length,
       leads
     });
   } catch (err: any) {
