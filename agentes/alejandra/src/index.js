@@ -155,6 +155,35 @@ async function handleReply(payload) {
     fullName
   });
 
+  // --- Reactivación automática ---
+  // Si el contacto vuelve al flujo del bot (tiene el tag "bot ia" y NO tiene
+  // el tag "atencion-asesor"), reactivamos su conversación en Supabase aunque
+  // antes haya sido escalada. Esto le permite al asesor devolver leads al bot
+  // con solo mover la etiqueta en GHL, sin tener que tocar Supabase.
+  const BOT_TAG = (process.env.GHL_BOT_TAG || 'bot ia').trim().toLowerCase();
+  const ESCALATION_TAG = (process.env.GHL_ESCALATION_TAG || 'atencion-asesor').trim().toLowerCase();
+  const tagsLower = tags.map(t => String(t).trim().toLowerCase());
+  const hasBotTag = tagsLower.includes(BOT_TAG);
+  const hasEscalationTag = tagsLower.includes(ESCALATION_TAG);
+
+  if (hasEscalationTag) {
+    console.log(`[${fullName}] contacto tiene tag "${ESCALATION_TAG}" — bot no responde, está con asesor humano`);
+    return;
+  }
+
+  if (
+    hasBotTag &&
+    (conversation.stage === 'escalado' || conversation.stage === 'finalizado')
+  ) {
+    console.log(
+      `[${fullName}] regresó al bot (tag "${BOT_TAG}" presente sin "${ESCALATION_TAG}") — reactivando: ${conversation.stage} → calificando`
+    );
+    await updateConversation(contactId, { stage: 'calificando' }).catch(err =>
+      console.error('[reactivar] updateConversation err:', err.message)
+    );
+    conversation.stage = 'calificando';
+  }
+
   if (conversation.stage === 'finalizado' || conversation.stage === 'escalado' || conversation.stage === 'bloqueado') {
     console.log(`[${fullName}] conversación ${conversation.stage}, no responde`);
     return;
