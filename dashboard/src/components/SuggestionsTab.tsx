@@ -1,56 +1,144 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Icon from './Icon';
 import LeadCard from './LeadCard';
 import {
-  ADVISORS,
-  LEADS,
+  ADVISORS as MOCK_ADVISORS,
+  LEADS as MOCK_LEADS,
   TASKS_TODAY,
   NOTES,
+  type Advisor,
   type Lead,
   type Task
 } from '@/lib/advisors-data';
 
-type Filter = 'all' | 'hot' | 'warm' | 'new' | 'dismissed';
+type Filter = 'all' | 'hot' | 'warm' | 'new' | 'cold';
+type Mode = 'loading' | 'live' | 'mock' | 'error';
 
 export default function SuggestionsTab() {
-  const [advisorId, setAdvisorId] = useState(ADVISORS[0].id);
+  const [advisors, setAdvisors] = useState<Advisor[]>([]);
+  const [advisorMode, setAdvisorMode] = useState<Mode>('loading');
+  const [advisorId, setAdvisorId] = useState<string>('');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadsMode, setLeadsMode] = useState<Mode>('loading');
+  const [leadsError, setLeadsError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
-  const [leads, setLeads] = useState<Lead[]>(LEADS);
   const [tasks, setTasks] = useState<Task[]>(TASKS_TODAY);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const advisor = ADVISORS.find(a => a.id === advisorId) || ADVISORS[0];
+  // Advisors
+  useEffect(() => {
+    let off = false;
+    setAdvisorMode('loading');
+    fetch('/api/ghl/advisors')
+      .then(r => r.json())
+      .then(data => {
+        if (off) return;
+        if (data.advisors && data.advisors.length) {
+          const list: Advisor[] = data.advisors.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            role: a.role,
+            color: a.color,
+            leads: 0,
+            hot: 0
+          }));
+          setAdvisors(list);
+          setAdvisorId(prev => prev || list[0].id);
+          setAdvisorMode('live');
+        } else {
+          setAdvisors(MOCK_ADVISORS);
+          setAdvisorId(MOCK_ADVISORS[0].id);
+          setAdvisorMode('mock');
+        }
+      })
+      .catch(() => {
+        if (off) return;
+        setAdvisors(MOCK_ADVISORS);
+        setAdvisorId(MOCK_ADVISORS[0].id);
+        setAdvisorMode('mock');
+      });
+    return () => {
+      off = true;
+    };
+  }, []);
+
+  // Leads
+  useEffect(() => {
+    if (!advisorId) return;
+    let off = false;
+    setLeadsMode('loading');
+    setLeadsError(null);
+    fetch(`/api/ghl/leads?advisor=${encodeURIComponent(advisorId)}`)
+      .then(async r => {
+        const data = await r.json();
+        if (off) return;
+        if (!r.ok) {
+          setLeadsError(data.error || `HTTP ${r.status}`);
+          // fallback mock de ese advisor si coincide id
+          const fromMock = MOCK_LEADS.filter(l => l.advisorId === advisorId);
+          setLeads(fromMock);
+          setLeadsMode(fromMock.length ? 'mock' : 'error');
+          return;
+        }
+        if (data.leads && data.leads.length) {
+          setLeads(data.leads);
+          setLeadsMode('live');
+        } else {
+          // sin leads en GHL → mostrar vacío live (no mock)
+          setLeads([]);
+          setLeadsMode('live');
+        }
+      })
+      .catch(err => {
+        if (off) return;
+        setLeadsError(err.message);
+        const fromMock = MOCK_LEADS.filter(l => l.advisorId === advisorId);
+        setLeads(fromMock);
+        setLeadsMode(fromMock.length ? 'mock' : 'error');
+      });
+    return () => {
+      off = true;
+    };
+  }, [advisorId, refreshKey]);
+
+  const advisor = advisors.find(a => a.id === advisorId) || advisors[0];
 
   const leadsForAdvisor = useMemo(
-    () => leads.filter(l => l.advisorId === advisorId),
-    [leads, advisorId]
+    () => leads.filter(l => !dismissed.has(l.id)),
+    [leads, dismissed]
   );
 
   const visible = useMemo(() => {
-    if (filter === 'all') return leadsForAdvisor.filter(l => !l.dismissed);
-    if (filter === 'dismissed') return leadsForAdvisor.filter(l => l.dismissed);
-    return leadsForAdvisor.filter(l => !l.dismissed && l.tag === filter);
+    if (filter === 'all') return leadsForAdvisor;
+    return leadsForAdvisor.filter(l => l.tag === filter);
   }, [leadsForAdvisor, filter]);
 
   const counts = useMemo(
     () => ({
-      all: leadsForAdvisor.filter(l => !l.dismissed).length,
-      hot: leadsForAdvisor.filter(l => !l.dismissed && l.tag === 'hot').length,
-      warm: leadsForAdvisor.filter(l => !l.dismissed && l.tag === 'warm').length,
-      new: leadsForAdvisor.filter(l => !l.dismissed && l.tag === 'new').length,
-      dismissed: leadsForAdvisor.filter(l => l.dismissed).length
+      all: leadsForAdvisor.length,
+      hot: leadsForAdvisor.filter(l => l.tag === 'hot').length,
+      warm: leadsForAdvisor.filter(l => l.tag === 'warm').length,
+      new: leadsForAdvisor.filter(l => l.tag === 'new').length,
+      cold: leadsForAdvisor.filter(l => l.tag === 'cold').length
     }),
     [leadsForAdvisor]
   );
-
-  const dismiss = (id: string) =>
-    setLeads(prev => prev.map(l => (l.id === id ? { ...l, dismissed: true } : l)));
 
   const toggleTask = (id: string) =>
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, done: !t.done } : t)));
 
   const openTasks = tasks.filter(t => !t.done).length;
+
+  if (!advisor) {
+    return (
+      <div className="m-auto p-8 text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+        Cargando asesores…
+      </div>
+    );
+  }
 
   return (
     <div
@@ -62,27 +150,21 @@ export default function SuggestionsTab() {
       {/* COL 1: advisor picker */}
       <aside
         className="flex flex-col overflow-hidden"
-        style={{
-          background: 'var(--bg-1)',
-          borderRight: '1px solid var(--border)'
-        }}
+        style={{ background: 'var(--bg-1)', borderRight: '1px solid var(--border)' }}
       >
         <div
           className="flex items-center gap-2 px-4 pb-[10px] pt-[14px] text-[11px] font-semibold uppercase tracking-[0.08em]"
           style={{ color: 'var(--fg-3)', borderBottom: '1px solid var(--border)' }}
         >
           <Icon name="users" size={12} />
-          Asesores del equipo
-          <span
-            className="ml-auto"
-            style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px' }}
-          >
-            {ADVISORS.length}
+          Asesores {advisorMode === 'live' ? '(GHL)' : advisorMode === 'mock' ? '(mock)' : ''}
+          <span className="ml-auto" style={{ fontFamily: 'var(--font-mono)', fontSize: '10.5px' }}>
+            {advisors.length}
           </span>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {ADVISORS.map(a => {
+          {advisors.map(a => {
             const active = advisorId === a.id;
             return (
               <button
@@ -114,31 +196,12 @@ export default function SuggestionsTab() {
                     className="mt-[2px] truncate text-[11px]"
                     style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
                   >
-                    {a.role} · {a.leads} leads
+                    {a.role}
                   </div>
                 </div>
-                <span
-                  className="rounded-[10px] px-[7px] py-[2px] text-[11px] font-semibold"
-                  style={{
-                    background:
-                      a.hot >= 3
-                        ? 'color-mix(in oklab, var(--warn), transparent 80%)'
-                        : 'var(--bg-3)',
-                    color: a.hot >= 3 ? 'var(--warn)' : 'var(--fg-1)',
-                    fontFamily: 'var(--font-mono)'
-                  }}
-                >
-                  {a.hot} 🔥
-                </span>
               </button>
             );
           })}
-        </div>
-
-        <div className="p-[14px]" style={{ borderTop: '1px solid var(--border)' }}>
-          <button type="button" className="btn btn-ghost w-full justify-center">
-            <Icon name="plus" size={12} /> Invitar asesor
-          </button>
         </div>
       </aside>
 
@@ -166,17 +229,35 @@ export default function SuggestionsTab() {
               className="mt-[2px] text-[11.5px]"
               style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
             >
-              Leads últimas 24h · datos mock · Fase 2 conecta GHL en vivo
+              {leadsMode === 'loading' && 'cargando GHL…'}
+              {leadsMode === 'live' && `${leads.length} conversaciones últimas 24h · GHL en vivo`}
+              {leadsMode === 'mock' && 'datos mock · el GHL real no respondió'}
+              {leadsMode === 'error' && `error GHL · ${leadsError}`}
             </div>
           </div>
           <div className="flex-1" />
-          <button type="button" className="btn btn-ghost">
+          <button
+            type="button"
+            onClick={() => setRefreshKey(k => k + 1)}
+            className="btn btn-ghost"
+            disabled={leadsMode === 'loading'}
+          >
             <Icon name="refresh" size={13} /> Actualizar
           </button>
-          <button type="button" className="btn">
-            <Icon name="flow" size={13} /> Workflow GHL
-          </button>
         </div>
+
+        {leadsMode === 'mock' && (
+          <div
+            className="px-[20px] py-[8px] text-[12px]"
+            style={{
+              background: 'color-mix(in oklab, var(--warn), transparent 88%)',
+              borderBottom: '1px solid color-mix(in oklab, var(--warn), transparent 70%)',
+              color: 'var(--warn)'
+            }}
+          >
+            ⚠️ Mostrando datos mock. {leadsError ? `Error: ${leadsError}` : 'GHL no configurado o sin leads.'}
+          </div>
+        )}
 
         <div
           className="flex flex-wrap items-center gap-[8px] px-[20px] py-[12px]"
@@ -194,7 +275,7 @@ export default function SuggestionsTab() {
               ['hot', '🔥 Calientes', counts.hot],
               ['warm', 'Tibios', counts.warm],
               ['new', 'Nuevos', counts.new],
-              ['dismissed', 'Descartados', counts.dismissed]
+              ['cold', 'Fríos', counts.cold]
             ] as const
           ).map(([k, lbl, n]) => {
             const active = filter === k;
@@ -203,7 +284,7 @@ export default function SuggestionsTab() {
                 key={k}
                 type="button"
                 onClick={() => setFilter(k)}
-                className="rounded-[16px] px-[10px] py-[4px] text-[12px] font-medium transition-all"
+                className="rounded-[16px] px-[10px] py-[4px] text-[12px] font-medium"
                 style={{
                   border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                   background: active ? 'var(--accent-soft)' : 'var(--bg-1)',
@@ -212,20 +293,22 @@ export default function SuggestionsTab() {
                   fontFamily: 'inherit'
                 }}
               >
-                {lbl}{' '}
-                <span style={{ opacity: 0.6, fontFamily: 'var(--font-mono)' }}>{n}</span>
+                {lbl} <span style={{ opacity: 0.6, fontFamily: 'var(--font-mono)' }}>{n}</span>
               </button>
             );
           })}
         </div>
 
         <div className="flex flex-1 flex-col gap-[12px] overflow-y-auto px-[20px] pb-[20px] pt-[12px]">
-          {visible.length === 0 ? (
-            <div
-              className="m-auto text-center text-sm"
-              style={{ color: 'var(--fg-2)' }}
-            >
-              Sin leads en este filtro.
+          {leadsMode === 'loading' ? (
+            <div className="m-auto text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+              Cargando leads de GHL…
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="m-auto text-center text-sm" style={{ color: 'var(--fg-2)' }}>
+              {leadsMode === 'live' && leads.length === 0
+                ? `No hay conversaciones últimas 24h asignadas a ${advisor.name}.`
+                : 'Sin leads en este filtro.'}
             </div>
           ) : (
             visible.map(lead => (
@@ -233,7 +316,7 @@ export default function SuggestionsTab() {
                 key={lead.id}
                 lead={lead}
                 advisor={advisor}
-                onDismiss={() => dismiss(lead.id)}
+                onDismiss={() => setDismissed(prev => new Set(prev).add(lead.id))}
                 onSent={() => {}}
               />
             ))
@@ -244,10 +327,7 @@ export default function SuggestionsTab() {
       {/* COL 3: today */}
       <aside
         className="flex flex-col overflow-y-auto"
-        style={{
-          background: 'var(--bg-1)',
-          borderLeft: '1px solid var(--border)'
-        }}
+        style={{ background: 'var(--bg-1)', borderLeft: '1px solid var(--border)' }}
       >
         <div className="p-[14px]" style={{ borderBottom: '1px solid var(--border)' }}>
           <div
@@ -257,9 +337,9 @@ export default function SuggestionsTab() {
             <Icon name="chart" size={12} /> Hoy · {advisor.name.split(' ')[0]}
           </div>
           <div className="flex gap-[10px]">
-            <StatCard label="Tareas" value={openTasks} delta="+2 vs ayer" />
-            <StatCard label="Leads" value={advisor.leads} delta="+3 vs ayer" />
-            <StatCard label="🔥 urgentes" value={advisor.hot} delta={null} />
+            <StatCard label="Tareas" value={openTasks} />
+            <StatCard label="Leads 24h" value={leads.length} />
+            <StatCard label="🔥" value={counts.hot} />
           </div>
         </div>
 
@@ -323,7 +403,7 @@ export default function SuggestionsTab() {
             className="mb-[10px] flex items-center gap-[6px] text-[11px] font-semibold uppercase tracking-[0.08em]"
             style={{ color: 'var(--fg-3)' }}
           >
-            <Icon name="note" size={12} /> Notas del lead
+            <Icon name="note" size={12} /> Notas de lead
           </div>
           {NOTES.map(n => (
             <div
@@ -354,13 +434,10 @@ export default function SuggestionsTab() {
           >
             <Icon name="bell" size={12} /> Recordatorios
           </div>
-          <div
-            className="text-[12.5px] leading-[1.5]"
-            style={{ color: 'var(--fg-1)' }}
-          >
+          <div className="text-[12.5px] leading-[1.5]" style={{ color: 'var(--fg-1)' }}>
             <b>18:00</b> — Revisar pipeline semanal.
             <br />
-            <span style={{ color: 'var(--fg-2)' }}>Siguiente lead agendado a las 20:00.</span>
+            <span style={{ color: 'var(--fg-2)' }}>Siguiente lead agendado 20:00.</span>
           </div>
         </div>
       </aside>
@@ -368,15 +445,7 @@ export default function SuggestionsTab() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  delta
-}: {
-  label: string;
-  value: number | string;
-  delta: string | null;
-}) {
+function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div
       className="flex-1 rounded-[10px] px-[12px] py-[10px]"
@@ -394,14 +463,6 @@ function StatCard({
       >
         {label}
       </div>
-      {delta && (
-        <div
-          className="mt-[2px] text-[10.5px]"
-          style={{ color: 'var(--success)', fontFamily: 'var(--font-mono)' }}
-        >
-          {delta}
-        </div>
-      )}
     </div>
   );
 }

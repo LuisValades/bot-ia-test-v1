@@ -45,6 +45,7 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const tag = tagLabels[lead.tag];
+  const hasDraft = !!draft?.trim();
 
   const polish = async () => {
     if (!instruction.trim() || polishing) return;
@@ -80,7 +81,7 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
     setSending(channel);
     setError(null);
     try {
-      const res = await fetch('/api/ghl-send-sms', {
+      const res = await fetch('/api/ghl/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,6 +101,35 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
       setError(err.message);
     } finally {
       setSending(null);
+    }
+  };
+
+  const proposeFromScratch = async () => {
+    if (polishing) return;
+    setPolishing(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/suggest-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          thread: lead.thread,
+          currentSms: '',
+          instruction:
+            'Proponer un SMS de seguimiento apropiado basado en el hilo reciente, corto y con una sola pregunta clara.',
+          leadName: lead.name,
+          advisorName: advisor.name,
+          reason: lead.reason
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al proponer');
+      setDraft(data.sms);
+      setPolishNote(data.note || null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setPolishing(false);
     }
   };
 
@@ -176,7 +206,7 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
             ))}
           </div>
 
-          {lead.suggestion !== null ? (
+          {hasDraft || lead.suggestion !== null ? (
             <div
               className="mx-4 my-3 rounded-[10px] px-[14px] py-[12px]"
               style={{
@@ -327,11 +357,41 @@ export default function LeadCard({ lead, advisor, onDismiss, onSent }: Props) {
               style={{
                 background: 'var(--bg-2)',
                 border: '1px solid var(--border)',
-                color: 'var(--fg-2)',
-                opacity: 0.7
+                color: 'var(--fg-1)'
               }}
             >
-              <Icon name="target" size={12} /> {lead.reason}
+              <div className="mb-[8px] flex items-start gap-[6px]">
+                <div className="pt-[1px]" style={{ color: 'var(--accent)' }}>
+                  <Icon name="target" size={12} />
+                </div>
+                <span className="flex-1">{lead.reason}</span>
+              </div>
+              {error && (
+                <div
+                  className="mb-[8px] rounded-[6px] px-[10px] py-[6px] text-[11.5px]"
+                  style={{
+                    background: 'color-mix(in oklab, var(--danger), transparent 85%)',
+                    color: 'var(--danger)',
+                    border: '1px solid color-mix(in oklab, var(--danger), transparent 60%)'
+                  }}
+                >
+                  ⚠️ {error}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-[6px]">
+                <button
+                  type="button"
+                  onClick={proposeFromScratch}
+                  disabled={polishing}
+                  className="btn btn-primary"
+                >
+                  <Icon name="sparkles" size={12} />
+                  {polishing ? 'Proponiendo…' : 'Proponer SMS con AI'}
+                </button>
+                <button type="button" onClick={onDismiss} className="btn btn-ghost">
+                  <Icon name="x" size={12} /> Descartar
+                </button>
+              </div>
             </div>
           )}
         </>
