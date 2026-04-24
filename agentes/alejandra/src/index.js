@@ -1,7 +1,7 @@
 import './env.js';
 import express from 'express';
 import cron from 'node-cron';
-import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
+import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage, clearConversation } from './db.js';
 import { sendSMS, getContact, getUser, createAppointment, createContactNote, createOpportunityNote, createInternalComment, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
 import { sendEscalationEmail, isEmailEnabled } from './notifications.js';
 import { chat } from './ai.js';
@@ -192,6 +192,18 @@ async function handleReply(payload) {
   if (!contactId) return console.warn('Reply sin contactId');
   if (direction !== 'inbound' && direction !== 'in') return;
   if (!userMessage && rawAttachments.length === 0) return console.warn('Reply sin mensaje ni attachments');
+
+  // --- Comando /clear — reinicia la conversación desde cero ---
+  if (userMessage && /^\s*\/?clear\s*$/i.test(userMessage)) {
+    console.log(`[${contactId}] comando CLEAR recibido, reiniciando conversación`);
+    await clearConversation(contactId);
+    try {
+      await sendSMS({ contactId, message: 'OK, conversación reiniciada. Escríbeme para empezar de cero.' });
+    } catch (err) {
+      console.error(`[${contactId}] fallo enviando confirmación de clear:`, err.message);
+    }
+    return;
+  }
 
   const contact = await getContact(contactId).catch(() => null);
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
@@ -680,26 +692,45 @@ async function handleBlockRequest({ contactId, conversationId, leadName }) {
 }
 
 /**
- * Safety net: reescribe la respuesta del modelo si detecta patrones prohibidos
- * (slots numerados, menciones de bancos específicos sin que el lead pregunte).
- * Esto es un último filtro — el prompt ya lo prohíbe, esto es por si el modelo
- * se contagia del historial de la conversación.
+ * Safety net quirúrgico: si el modelo mandó un bloque de slots horarios
+ * numerados, remueve SÓLO ese bloque y deja el resto del mensaje intacto.
+ * Requiere AM/PM explícito o HH:MM para evitar falsos positivos con listas
+ * de productos ("1 - 500k", "1 - TPV") o montos.
  */
 function sanitizeReply(text, advisor) {
   if (!text) return text;
-  let out = String(text);
 
-  // 1. Slots numerados prohibidos: "1 - 10:00am", "2 - 11am", "Jueves 23 de abril\n1 - ..."
-  const hasNumberedSlots = /(^|\n)\s*\d+\s*[-–—]\s*\d{1,2}[:.]?\d{0,2}\s*(am|pm|hrs|h)?/im.test(out);
-  const hasSlotsHeader = /(horarios disponibles|Aqu[íi] est[áa]n? los horarios|estos son los horarios|opciones? de horario)/i.test(out);
+  // Línea de slot horario: "1 - 10am" | "2 - 11:00pm" | "3 - 12:00"
+  const slotLineRegex = /^[ \t]*\d+\s*[-–—]\s*(?:\d{1,2}:\d{2}(?:\s*(?:am|pm))?|\d{1,2}\s*(?:am|pm))\s*$/gim;
+  const slotMatches = text.match(slotLineRegex) || [];
+  const hasSlotsHeader = /(horarios disponibles|aqu[íi] est[áa]n? los horarios|estos son los horarios)/i.test(text);
 
-  if (hasNumberedSlots || hasSlotsHeader) {
-    const advisorName = advisor?.name || 'Efraín';
-    const replacement = `Le paso los comentarios a ${advisorName}, él maneja estos casos.\n\n¿Te puede llamar en 2 horas? Si prefieres otra hora, dime a qué hora puedes (horario 11 AM - 7 PM).`;
-    console.warn(`[sanitize] respuesta del modelo tenía slots numerados/header — reemplazado por callback flexible. Original:\n${out.slice(0, 300)}`);
-    out = replacement;
+  // Solo intervenir si hay ≥2 slots consecutivos o header+≥1 slot
+  if (slotMatches.length < 2 && !(hasSlotsHeader && slotMatches.length >= 1)) {
+    return text;
   }
 
+  let out = text;
+  // Quitar header tipo "Aquí están los horarios disponibles:"
+  out = out.replace(/(?:^|\n)[^\n]*(horarios disponibles|aqu[íi] est[áa]n? los horarios|estos son los horarios)[^\n]*\n?/gim, '\n');
+  // Quitar línea de día ("Jueves 23 de abril")
+  out = out.replace(/(?:^|\n)(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)[^\n]*\n?/gim, '\n');
+  // Quitar las líneas de slots
+  out = out.replace(slotLineRegex, '');
+  // Quitar cierre "¿Cuál te queda bien?" si quedó suelto
+  out = out.replace(/\n?[^\n]*¿cu[aá]l te queda[^?]*\?[^\n]*/gi, '');
+  // Compactar blancos
+  out = out.replace(/\n{3,}/g, '\n\n').trim();
+
+  // Si quedó muy corto, agregar cierre de callback flexible
+  const advisorName = advisor?.name || 'Efraín';
+  if (!out || out.length < 30 || !/(llamar|hora|asesor|Efra[íi]n)/i.test(out)) {
+    out = `Le paso los comentarios a ${advisorName}.\n\n¿Te puede llamar en 2 horas? Si prefieres otra hora, dime a qué hora (horario 11 AM - 7 PM).`;
+  } else if (!/(2 horas|¿a qu[eé] hora|qu[eé] hora)/i.test(out)) {
+    out = `${out}\n\n¿Te puede llamar en 2 horas? Si prefieres otra hora, dime cuándo.`;
+  }
+
+  console.warn(`[sanitize] removido bloque de ${slotMatches.length} slots numerados. Conservado el resto.`);
   return out;
 }
 

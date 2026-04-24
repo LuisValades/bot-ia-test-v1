@@ -31,6 +31,33 @@ export async function getOrCreateConversation({ contactId, locationId, phone, fu
   return data;
 }
 
+export async function clearConversation(contactId) {
+  if (!contactId) return;
+  const resetPatch = {
+    stage: 'inicio',
+    profile: {},
+    intent: null,
+    proposed_slots: null,
+    appointment_id: null,
+    appointment_at: null,
+    followup_count: 0,
+    followup_at: null,
+    retake_scheduled_at: null,
+    last_msg_at: new Date().toISOString()
+  };
+  const { error: updErr } = await supabase
+    .from('conversations')
+    .update(resetPatch)
+    .eq('contact_id', contactId);
+  if (updErr) console.warn('[clearConversation] update err:', updErr.message);
+
+  const { error: delErr } = await supabase
+    .from('messages')
+    .delete()
+    .eq('contact_id', contactId);
+  if (delErr) console.warn('[clearConversation] delete msgs err:', delErr.message);
+}
+
 export async function updateConversation(contactId, patch) {
   const { error } = await supabase
     .from('conversations')
