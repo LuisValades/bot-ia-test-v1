@@ -57,16 +57,66 @@ app.post('/webhook/ghl/trigger', async (req, res) => {
   });
 });
 
-app.post('/webhook/ghl/reply', async (req, res) => {
-  res.status(200).json({ received: true });
-  const contactId = extractContactId(req.body);
+const MESSAGE_BUFFER_MS = parseInt(process.env.MESSAGE_BUFFER_MS || '30000', 10);
+const pendingBuffers = new Map(); // contactId -> { timer, payloads[], startedAt }
+
+function flushBuffer(contactId) {
+  const entry = pendingBuffers.get(contactId);
+  if (!entry) return;
+  pendingBuffers.delete(contactId);
+
+  const payloads = entry.payloads;
+  const base = payloads[payloads.length - 1].body || payloads[payloads.length - 1];
+  const mergedBody = { ...base };
+
+  const parts = payloads
+    .map(p => coerceMessage((p.body || p).message ?? (p.body || p).body ?? (p.body || p).last_message?.body ?? ''))
+    .map(s => String(s || '').trim())
+    .filter(Boolean);
+  mergedBody.message = parts.join('\n');
+
+  const allAtts = payloads.flatMap(p => {
+    const pb = p.body || p;
+    return pb.attachments || pb.last_message?.attachments || [];
+  });
+  if (allAtts.length > 0) mergedBody.attachments = allAtts;
+
+  console.log(`[${contactId}] buffer flush: ${payloads.length} msg(s) → "${mergedBody.message.slice(0, 80)}..."`);
+
   serializePerContact(contactId, async () => {
     try {
-      await handleReply(req.body);
+      await handleReply({ body: mergedBody });
     } catch (err) {
-      console.error('Error en reply:', err.response?.data || err.message);
+      console.error('Error en reply (buffered):', err.response?.data || err.message);
     }
   });
+}
+
+function enqueueReply(payload) {
+  const contactId = extractContactId(payload);
+  if (!contactId) {
+    console.warn('[reply] sin contactId, descartando');
+    return;
+  }
+
+  const existing = pendingBuffers.get(contactId);
+  if (existing) {
+    clearTimeout(existing.timer);
+    existing.payloads.push(payload);
+    existing.timer = setTimeout(() => flushBuffer(contactId), MESSAGE_BUFFER_MS);
+    console.log(`[${contactId}] buffer +1 (total ${existing.payloads.length}), timer reset ${MESSAGE_BUFFER_MS / 1000}s`);
+    return;
+  }
+
+  const entry = { payloads: [payload], startedAt: Date.now(), timer: null };
+  entry.timer = setTimeout(() => flushBuffer(contactId), MESSAGE_BUFFER_MS);
+  pendingBuffers.set(contactId, entry);
+  console.log(`[${contactId}] buffer start, aguantando ${MESSAGE_BUFFER_MS / 1000}s por si llegan más mensajes`);
+}
+
+app.post('/webhook/ghl/reply', async (req, res) => {
+  res.status(200).json({ received: true });
+  enqueueReply(req.body);
 });
 
 async function handleTrigger(payload) {

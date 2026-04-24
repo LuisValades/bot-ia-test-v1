@@ -2169,13 +2169,26 @@ version: "1.0"
 
 **Tu Casa Express** es el producto de **autofinanciamiento hipotecario** propio de Crediexpres. No es un crédito bancario; es un esquema interno que opera con perfiles que el banco tradicional no acepta.
 
-### ¿Para quién es?
+### ⚠️ ALCANCE LIMITADO — REGLA DURA
 
-- Lead con **buró manchado** (atrasos vigentes o liquidación reciente < 12 meses).
-- Lead con **ingresos no declarados** al SAT o con declaración < 50% del ingreso bruto.
-- Lead que necesita **monto < 900,000 MXN** (por debajo del piso bancario).
-- **Extranjeros sin FM** (forma migratoria) vigente ni en trámite.
-- Cualquier perfil rechazado por las 11 instituciones bancarias aliadas.
+**Tu Casa Express SOLO sirve para ADQUISICIÓN de vivienda** (comprar casa o departamento).
+
+**NO cubre:**
+- Liquidez con garantía
+- Refinanciamiento / sustitución de hipoteca
+- Construcción en terreno propio
+- Remodelación / ampliación
+- Cualquier crédito empresarial o PyME
+
+Si el lead tiene buró manchado y busca **liquidez, refi o construcción** → NO ofrezcas Tu Casa Express. Escalas directo: *"Tu asesor revisará tu caso en particular, te contactará por llamada."*
+
+### ¿Para quién es? (solo adquisición)
+
+- Lead con **buró manchado** (atrasos vigentes o liquidación reciente < 12 meses) **que quiere comprar vivienda**.
+- Lead con **ingresos no declarados** al SAT o con declaración < 50% del ingreso bruto **que quiere comprar vivienda**.
+- Lead que necesita **monto < 900,000 MXN** para comprar (por debajo del piso bancario).
+- **Extranjeros sin FM** (forma migratoria) vigente ni en trámite **que quieren comprar**.
+- Cualquier perfil rechazado por las 11 instituciones bancarias aliadas **para compra de vivienda**.
 
 ### ¿Cómo se presenta al lead?
 

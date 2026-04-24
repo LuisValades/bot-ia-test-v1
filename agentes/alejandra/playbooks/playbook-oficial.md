@@ -692,8 +692,10 @@ Si falla **cualquiera** de los dos → no banco. Ofrecer Tu Casa Express (hipote
 ### 14.5 Tu Casa Express (producto alternativo hipotecario)
 
 - **Qué es:** Autofinanciamiento hipotecario propio de Crediexpres.
-- **Para quién:** Buró manchado, ingresos no declarados, montos < 900k, extranjeros sin FM aún, perfiles que banco no acepta.
-- **Cómo presentarlo:** No como "plan B" ni como "más caro". Como "otra ruta que sí opera con tu perfil".
+- **ALCANCE:** SOLO para ADQUISICIÓN de vivienda (comprar casa/depa). **NO da liquidez, NO refinanciamiento, NO construcción, NO remodelación.**
+- **Para quién:** Buró manchado, ingresos no declarados, montos < 900k, extranjeros sin FM aún, perfiles que banco no acepta — **siempre que el destino sea comprar vivienda**.
+- **Cómo presentarlo:** No como "plan B" ni como "más caro". Como "otra ruta que sí opera con tu perfil para comprar".
+- **Si el lead busca liquidez / refi / construcción con buró manchado → NO Tu Casa Express. Escalar: "Tu asesor revisará tu caso en particular, te contactará por llamada."**
 
 ### 14.6 Flujo binacional / extranjero
 

@@ -58,23 +58,23 @@ export async function chat({ history, userMessage, contactName, hasName, slotsCo
   const finalUserContent = buildUserContent(userMessage, attachments);
 
   const pairsMessage = slotPairs && slotPairs.length > 0
-    ? `═══ SLOTS REALES DEL CALENDARIO (SÓLO PARA CUANDO SEA EL MOMENTO) ═══
-Estos son los ÚNICOS horarios reales del calendario. El sistema te los pone aquí por anticipación, pero NO son permiso para ofrecerlos. SÓLO los usas si estás en paso 7 u 8 del flujo de pre-calificación (lead ya calificado) O si el lead pidió agendar explícitamente.
+    ? `═══ MAPEO INTERNO DE CALLBACK (PRIVADO — NUNCA LO MUESTRES AL LEAD) ═══
+Estos horarios son referencia interna para que luego tú puedas poner el ISO correcto en book_slot.
 
-FORMATO DE MENÚ PARA MOSTRAR AL LEAD (cópialo tal cual CUANDO llegue el momento correcto — no antes):
+Mapeo interno (NO mostrar al lead, solo para book_slot):
+${slotPairs.map(p => `${p.human} → "${p.iso}"`).join('\n')}
 
-${slotsMenu}
-
-Mapeo número → ISO (NO MUESTRES ESTO AL LEAD, es solo para ti):
-${slotPairs.map(p => `${p.number} → ${p.human} → "${p.iso}"`).join('\n')}
-
-REGLAS:
-0. Si el lead apenas saludó, dijo "info", "hola", no ha dado nombre o intent → IGNORA este bloque. No ofrezcas cita todavía. Seguir el flujo.
-1. Cuando SÍ ofrezcas horarios (paso 7/8), reproduce EXACTO el formato de menú numerado. NO inventes horarios ni días.
-2. Ofrece máximo 3 opciones por mensaje (números 1, 2, 3). Si hay más, di "tengo más disponibilidad si ninguno te queda".
-3. Cuando el lead confirme, puede decir un número ("la 2", "el 3", "dame la 1") o una hora ("11am"). Identifica cuál slot eligió y pon en book_slot el ISO EXACTO.
-4. Si el lead pide un horario que no está en la lista, dile que no tienes a esa hora y re-ofrece los que sí.
-5. Mantén los horarios DEL MENÚ actual, ignora horarios de mensajes previos del historial (pueden estar caducos).`
+REGLAS DE CIERRE DE CITA — CALLBACK FLEXIBLE:
+0. Si el lead apenas saludó, dijo "info", "hola", no ha dado nombre o intent → IGNORA este bloque.
+1. Cuando llegues al cierre (paso 7/8, perfil completo), NUNCA ESCRIBAS:
+   - "Aquí están los horarios disponibles"
+   - Listas numeradas de horarios: "1 - 10am", "2 - 11am", "3 - 12pm"
+   - Fechas con día de la semana: "Jueves 23 de abril 10am"
+2. EL CIERRE CORRECTO es callback flexible:
+   "Le paso los comentarios a [Asesor]. ¿Te puede llamar en 2 horas? Si prefieres otra hora, dime a qué hora puedes."
+3. Horario laboral asesor: **11 AM - 7 PM (L-V)**. Si el lead propone fuera → "Efraín atiende de 11 AM a 7 PM, ¿entre ese rango qué hora te queda?".
+4. Cuando el lead confirme una hora ("sale, en 2 horas" / "11am me queda" / "mañana 3pm"), buscas en el mapeo interno el ISO más cercano y lo pones en book_slot. Si no hay ningún slot cercano, agendas el más próximo disponible.
+5. Si el lead dice "mañana" sin hora → "¿Entre 11am y 7pm qué hora te queda bien?". Nunca listes opciones numeradas.`
     : null;
 
   const ragContext = await retrieveKnowledge(userMessage, attachments);
@@ -103,9 +103,7 @@ REGLAS:
       role: m.direction === 'in' ? 'user' : 'assistant',
       content: m.body
     })),
-    ...(pairsMessage
-      ? [{ role: 'system', content: pairsMessage }]
-      : (slotsContext ? [{ role: 'system', content: `Slots disponibles próximos: ${slotsContext}` }] : [])),
+    ...(pairsMessage ? [{ role: 'system', content: pairsMessage }] : []),
     { role: 'user', content: finalUserContent }
   ];
 
