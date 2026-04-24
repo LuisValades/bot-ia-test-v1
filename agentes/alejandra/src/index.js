@@ -546,6 +546,8 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     });
   }
 
+  replyText = sanitizeReply(replyText, advisor);
+
   const sendResult = await sendMultiPartSMS({
     contactId,
     message: replyText,
@@ -675,6 +677,30 @@ async function handleBlockRequest({ contactId, conversationId, leadName }) {
     console.error(`[${leadName}] fallo creando nota de bloqueo:`, err.message);
   }
   console.log(`[${leadName}] 🛑 lead bloqueado. No responde más.`);
+}
+
+/**
+ * Safety net: reescribe la respuesta del modelo si detecta patrones prohibidos
+ * (slots numerados, menciones de bancos específicos sin que el lead pregunte).
+ * Esto es un último filtro — el prompt ya lo prohíbe, esto es por si el modelo
+ * se contagia del historial de la conversación.
+ */
+function sanitizeReply(text, advisor) {
+  if (!text) return text;
+  let out = String(text);
+
+  // 1. Slots numerados prohibidos: "1 - 10:00am", "2 - 11am", "Jueves 23 de abril\n1 - ..."
+  const hasNumberedSlots = /(^|\n)\s*\d+\s*[-–—]\s*\d{1,2}[:.]?\d{0,2}\s*(am|pm|hrs|h)?/im.test(out);
+  const hasSlotsHeader = /(horarios disponibles|Aqu[íi] est[áa]n? los horarios|estos son los horarios|opciones? de horario)/i.test(out);
+
+  if (hasNumberedSlots || hasSlotsHeader) {
+    const advisorName = advisor?.name || 'Efraín';
+    const replacement = `Le paso los comentarios a ${advisorName}, él maneja estos casos.\n\n¿Te puede llamar en 2 horas? Si prefieres otra hora, dime a qué hora puedes (horario 11 AM - 7 PM).`;
+    console.warn(`[sanitize] respuesta del modelo tenía slots numerados/header — reemplazado por callback flexible. Original:\n${out.slice(0, 300)}`);
+    out = replacement;
+  }
+
+  return out;
 }
 
 function detectTone(triggeringMessage, history = []) {
