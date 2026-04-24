@@ -44,6 +44,80 @@ function isBusinessHours() {
   return current >= startMin && current < endMin;
 }
 
+/**
+ * Dispara SMS de recordatorio al asesor 10 min antes de la llamada con el lead.
+ * Busca conversations con appointment_at en los próximos 0-10 min y sin
+ * reminder enviado previamente (profile.advisor_reminder_sent_at).
+ */
+export async function runReminders() {
+  const now = new Date();
+  const tenMinLater = new Date(now.getTime() + 10 * 60_000).toISOString();
+  const fiveMinBefore = new Date(now.getTime() - 5 * 60_000).toISOString();
+
+  const { data: candidates, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .not('appointment_at', 'is', null)
+    .gte('appointment_at', fiveMinBefore)
+    .lte('appointment_at', tenMinLater);
+
+  if (error) {
+    console.error('[reminder] query err:', error.message);
+    return;
+  }
+  if (!candidates || candidates.length === 0) return;
+
+  for (const conv of candidates) {
+    try {
+      const already = conv.profile?.advisor_reminder_sent_at;
+      if (already) continue;
+
+      // Marcar como enviado ANTES de mandar (evita duplicados si cron corre múltiples veces)
+      const newProfile = { ...(conv.profile || {}), advisor_reminder_sent_at: new Date().toISOString() };
+      const { data: claim, error: claimErr } = await supabase
+        .from('conversations')
+        .update({ profile: newProfile })
+        .eq('contact_id', conv.contact_id)
+        .eq('id', conv.id)
+        .select('contact_id');
+      if (claimErr || !claim || claim.length === 0) continue;
+
+      // Obtener contacto + asesor
+      const { getContact } = await import('./ghl.js');
+      const { sendAdvisorSMS, resolveAdvisor } = await import('./index.js');
+      const contact = await getContact(conv.contact_id).catch(() => null);
+      if (!contact) {
+        console.warn(`[reminder] contacto ${conv.contact_id} no encontrado`);
+        continue;
+      }
+      const advisor = await resolveAdvisor(contact);
+      if (!advisor?.email) {
+        console.warn(`[reminder] sin advisor para ${conv.contact_id}`);
+        continue;
+      }
+
+      const callbackHuman = new Intl.DateTimeFormat('es-MX', {
+        timeZone: 'America/Mexico_City',
+        weekday: 'short', day: '2-digit', month: 'short',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      }).format(new Date(conv.appointment_at));
+
+      const res = await sendAdvisorSMS({
+        advisor,
+        leadName: conv.full_name,
+        leadPhone: contact.phone || conv.phone,
+        callbackWindow: callbackHuman,
+        product: conv.profile?.intent || conv.profile?.producto || null,
+        reason: 'reminder-10min'
+      });
+
+      console.log(`[reminder] ${conv.full_name} → asesor ${advisor.name}: ${res.sent ? 'OK' : 'FAIL ' + res.error}`);
+    } catch (err) {
+      console.error(`[reminder] ${conv.contact_id} err:`, err.response?.data || err.message);
+    }
+  }
+}
+
 export async function runFollowups() {
   if (!isBusinessHours()) {
     return;

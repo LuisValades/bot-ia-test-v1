@@ -6,7 +6,7 @@ import { sendSMS, getContact, getUser, createContactNote, createOpportunityNote,
 import { sendEscalationEmail, isEmailEnabled } from './notifications.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
-import { runFollowups } from './followup.js';
+import { runFollowups, runReminders } from './followup.js';
 import { processAttachments } from './media.js';
 import { hydrateFromGHL, persistGHLHistory } from './hydration.js';
 import { supabase } from './db.js';
@@ -174,7 +174,7 @@ async function handleTrigger(payload) {
     }
   }
 
-  await runTurn({ conversation, contactId, fullName, userMessage: '__TRIGGER_INICIAL__', advisor, tags, isReactivation });
+  await runTurn({ conversation, contact, contactId, fullName, userMessage: '__TRIGGER_INICIAL__', advisor, tags, isReactivation });
 }
 
 function detectReactivation(tags) {
@@ -294,7 +294,7 @@ async function handleReply(payload) {
   }
 
   // isReactivation solo aplica al saludo inicial (trigger/retake), no a replies ya en conversación
-  await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor, tags, isReactivation: false });
+  await runTurn({ conversation, contact, contactId, fullName, userMessage, attachments, advisor, tags, isReactivation: false });
 }
 
 // Mapa estático de asesores por userId (email + phone para notificaciones).
@@ -401,7 +401,7 @@ function parseAttachments(raw) {
   return [];
 }
 
-async function runTurn({ conversation, contactId, fullName, userMessage, attachments = [], advisor = null, tags = [], isReactivation = false }) {
+async function runTurn({ conversation, contact = null, contactId, fullName, userMessage, attachments = [], advisor = null, tags = [], isReactivation = false }) {
   const isInitial = userMessage === '__TRIGGER_INICIAL__';
 
   if (!isInitial) {
@@ -537,7 +537,17 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   const modelClaimsBooked = /(\bagendad[oa]\b|\bconfirmad[oa]\s+la\s+(llamada|cita)|\breservad[oa]\b|\bapartad[oa]\b|he\s+agendad|ya\s+(?:est[áa]\s+)?agendad|te\s+llamar[áa]|te\s+marca|te\s+contacta(?:r[áa])?|agendamos|le\s+paso\s+(?:a\s+|los\s+comentarios)|paso\s+(?:a\s+|el\s+caso\s+a\s+)Efra)/i.test(replyText || '');
   const modelStalls = /(d[eé]jame\s+confirmar|te\s+aviso\s+en\s+un\s+momento|un\s+momento,?\s+por\s+favor|voy\s+a\s+confirmar|enseguida\s+te\s+confirmo)/i.test(replyText || '');
   if (!action.book_slot && (modelClaimsBooked || modelStalls) && hasExplicitTime) {
-    console.warn(`[${leadName || 'Lead'}] modelo dijo "agendado" sin book_slot — disparando escalación con callback manual`);
+    console.warn(`[${leadName || 'Lead'}] modelo confirmó llamada sin book_slot — disparando escalación con callback parseado`);
+    const parsedTs = parseCallbackTimestamp(userMessage);
+    const callbackIso = parsedTs ? parsedTs.toISOString() : null;
+    const callbackHuman = parsedTs
+      ? new Intl.DateTimeFormat('es-MX', {
+          timeZone: 'America/Mexico_City',
+          weekday: 'short', day: '2-digit', month: 'short',
+          hour: 'numeric', minute: '2-digit', hour12: true
+        }).format(parsedTs)
+      : `lead pidió: "${userMessage}"`;
+
     try {
       const oppForFallback = await findContactOpportunity(contactId);
       await dispatchEscalationNotifications({
@@ -549,10 +559,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
         reason: 'appointment-booked',
         triggeringMessage: userMessage,
         profile: { ...(conversation.profile || {}), ...(action.profile_updates || {}), intent: action.intent },
-        callbackWindow: `lead pidió: "${userMessage}" (sin slot en calendario, agendar manual)`,
+        callbackWindow: callbackHuman,
+        dueDate: callbackIso,
         opportunityId: oppForFallback?.id || null
       });
-      await updateConversation(contactId, { stage: 'confirmado', intent: action.intent });
+      const updatePatch = { stage: 'confirmado', intent: action.intent };
+      if (callbackIso) updatePatch.appointment_at = callbackIso;
+      await updateConversation(contactId, updatePatch);
     } catch (notifErr) {
       console.error(`[${leadName || fullName}] fallo en fallback notif:`, notifErr.message);
     }
@@ -819,6 +832,66 @@ function sanitizeReply(text, advisor) {
   return out;
 }
 
+/**
+ * Parsea frases de callback ("4 pm", "mañana 10am", "en 2 horas") y retorna
+ * un Date en timezone CDMX (UTC-6, sin DST desde 2022).
+ * Retorna null si no puede parsear.
+ */
+export function parseCallbackTimestamp(text, baseNow = new Date()) {
+  if (!text) return null;
+  const low = String(text).toLowerCase();
+  const TZ_OFFSET = 6; // CDMX es UTC-6 (sin DST)
+
+  // "en N horas/minutos"
+  const rel = low.match(/en\s+(\d+)\s*(hora|minuto)/);
+  if (rel) {
+    const n = parseInt(rel[1], 10);
+    const ms = rel[2] === 'minuto' ? n * 60_000 : n * 3_600_000;
+    return new Date(baseNow.getTime() + ms);
+  }
+
+  // Detectar hora/minuto + am/pm (o "de la tarde/noche")
+  const m = low.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm|de la maña|de la tarde|de la noche|hrs?|h\.?)?/);
+  if (!m) return null;
+  let hour = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const period = (m[3] || '').toLowerCase();
+
+  if (hour < 0 || hour > 23) return null;
+
+  if (period === 'pm' && hour < 12) hour += 12;
+  else if (period === 'am' && hour === 12) hour = 0;
+  else if ((period.includes('tarde') || period.includes('noche')) && hour < 12) hour += 12;
+  else if (!period && hour >= 1 && hour <= 7) hour += 12; // "4" ambiguo → asume 4 PM
+
+  // Decidir día (hoy, mañana, pasado mañana)
+  let dayOffset = 0;
+  if (low.includes('pasado mañ')) dayOffset = 2;
+  else if (low.includes('mañana')) dayOffset = 1;
+
+  // Obtener fecha CDMX actual
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(baseNow).reduce((a, p) => ({ ...a, [p.type]: p.value }), {});
+
+  const year = parseInt(parts.year, 10);
+  const month = parseInt(parts.month, 10);
+  const day = parseInt(parts.day, 10) + dayOffset;
+
+  // Construir ISO con offset CDMX
+  const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00-0${TZ_OFFSET}:00`;
+  const parsed = new Date(iso);
+  if (isNaN(parsed.getTime())) return null;
+
+  // Si el resultado ya pasó >30 min (hoy) y el user no dijo mañana, asumir mañana
+  if (parsed.getTime() < baseNow.getTime() - 30 * 60_000 && dayOffset === 0) {
+    parsed.setUTCDate(parsed.getUTCDate() + 1);
+  }
+
+  return parsed;
+}
+
 function detectTone(triggeringMessage, history = []) {
   const text = [(triggeringMessage || ''), ...history.slice(-3).map(m => m.body || '')]
     .join(' ')
@@ -834,7 +907,7 @@ function detectTone(triggeringMessage, history = []) {
  * El SMS sale desde el número del bot. Incluye nota "(automático)" para evitar
  * que el asesor intente responder al lead por ahí.
  */
-async function sendAdvisorSMS({ advisor, leadName, leadPhone, callbackWindow, product, reason }) {
+export async function sendAdvisorSMS({ advisor, leadName, leadPhone, callbackWindow, product, reason }) {
   if (!advisor?.email) {
     return { sent: false, error: 'advisor sin email' };
   }
@@ -844,21 +917,34 @@ async function sendAdvisorSMS({ advisor, leadName, leadPhone, callbackWindow, pr
       return { sent: false, error: `advisor no existe como contacto en GHL (email ${advisor.email})` };
     }
 
-    const reasonLabel =
-      reason === 'lead-requested' ? 'pidió humano'
-        : reason === 'appointment-booked' ? 'quiere llamada'
-        : reason === 'profile-complete' ? 'lead calificado'
-        : 'escalación';
-
-    const lines = [
-      `🔔 Alejandra bot — ${reasonLabel}`,
-      `Lead: ${leadName || '(s/n)'}${leadPhone ? ` · ${leadPhone}` : ''}`,
-      product ? `Producto: ${product}` : null,
-      callbackWindow ? `Ventana: ${callbackWindow}` : null,
-      'Revisa tarea + nota en GHL.',
-      '(automático — no responder aquí)'
-    ].filter(Boolean);
-    const msg = lines.join('\n');
+    let msg;
+    if (reason === 'reminder-10min') {
+      // SMS de recordatorio 10 min antes de la llamada
+      const lines = [
+        `⏰ Recordatorio: llamada en 10 min`,
+        `Lead: ${leadName || '(s/n)'}${leadPhone ? ` · ${leadPhone}` : ''}`,
+        product ? `Producto: ${product}` : null,
+        callbackWindow ? `Hora: ${callbackWindow}` : null,
+        'Detalles en GHL.',
+        '(automático)'
+      ].filter(Boolean);
+      msg = lines.join('\n');
+    } else {
+      const reasonLabel =
+        reason === 'lead-requested' ? 'pidió humano'
+          : reason === 'appointment-booked' ? 'quiere llamada'
+          : reason === 'profile-complete' ? 'lead calificado'
+          : 'escalación';
+      const lines = [
+        `🔔 Alejandra bot — ${reasonLabel}`,
+        `Lead: ${leadName || '(s/n)'}${leadPhone ? ` · ${leadPhone}` : ''}`,
+        product ? `Producto: ${product}` : null,
+        callbackWindow ? `Ventana: ${callbackWindow}` : null,
+        'Revisa tarea + nota en GHL.',
+        '(automático — no responder aquí)'
+      ].filter(Boolean);
+      msg = lines.join('\n');
+    }
 
     const res = await sendSMS({ contactId: advisorContact.id, message: msg });
     return { sent: true, messageId: res?.messageId || res?.id || null, advisorContactId: advisorContact.id };
@@ -867,6 +953,9 @@ async function sendAdvisorSMS({ advisor, leadName, leadPhone, callbackWindow, pr
     return { sent: false, error: err.response?.data?.message || err.message };
   }
 }
+
+// Export para followup.js (runReminders)
+export { resolveAdvisor };
 
 async function dispatchEscalationNotifications({
   contactId,
@@ -1110,13 +1199,14 @@ cron.schedule('* * * * *', async () => {
   try {
     await runRetakes();
     await runFollowups();
+    await runReminders();
   } catch (err) {
     console.error('[cron] tick error:', err.message);
   } finally {
     cronRunning = false;
   }
 });
-console.log(`Cron activo: retakes (${RETAKE_DELAY_MIN} min tras reactivación) + followups (umbral ${process.env.FOLLOWUP_DELAY_MIN || 5} min, máx ${process.env.MAX_FOLLOWUPS || 2} por lead)`);
+console.log(`Cron activo: retakes (${RETAKE_DELAY_MIN} min tras reactivación) + followups (umbral ${process.env.FOLLOWUP_DELAY_MIN || 5} min, máx ${process.env.MAX_FOLLOWUPS || 2} por lead) + reminders (SMS al asesor 10 min antes de llamada)`);
 
 async function runRetakes() {
   const nowIso = new Date().toISOString();
@@ -1146,6 +1236,7 @@ async function runRetakes() {
       console.log(`[${fullName}] retake disparando (reactivación tras ${RETAKE_DELAY_MIN} min)`);
       await runTurn({
         conversation: { ...conv, retake_scheduled_at: null },
+        contact,
         contactId: conv.contact_id,
         fullName,
         userMessage: '__TRIGGER_INICIAL__',
