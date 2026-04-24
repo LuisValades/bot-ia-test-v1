@@ -533,12 +533,24 @@ async function runTurn({ conversation, contact = null, contactId, fullName, user
   // Fallback crítico: si el modelo mintió ("está agendado"), deja al lead en limbo
   // ("déjame confirmar", "te aviso en un momento") o promete llamada sin book_slot,
   // escalar de todos modos para que el asesor contacte manualmente con la ventana
-  // que pidió el lead.
-  const modelClaimsBooked = /(\bagendad[oa]\b|\bconfirmad[oa]\s+la\s+(llamada|cita)|\breservad[oa]\b|\bapartad[oa]\b|he\s+agendad|ya\s+(?:est[áa]\s+)?agendad|te\s+llamar[áa]|te\s+marca|te\s+contacta(?:r[áa])?|agendamos|le\s+paso\s+(?:a\s+|los\s+comentarios)|paso\s+(?:a\s+|el\s+caso\s+a\s+)Efra)/i.test(replyText || '');
+  // que pidió el lead. Además: buscar hora en los últimos 5 mensajes del historial,
+  // no solo en el userMessage actual (ej. lead dice "si" confirmando hora dicha antes).
+  const timeRegex = /\b\d{1,2}\s*(?::\d{2})?\s*(am|pm|hrs?|h\.?)\b|\b\d{1,2}\s*(?:de la|de)\s+(ma[ñn]ana|tarde|noche)\b|\ben\s+\d+\s+(?:hora|minuto)s?\b|\b(?:ma[ñn]ana|pasado ma[ñn]ana|hoy)\b/i;
+  const recentText = [
+    userMessage || '',
+    replyText || '',
+    ...history.slice(-5).map(m => m?.body || '')
+  ].join(' ');
+  const hasTimeContext = hasExplicitTime || timeRegex.test(recentText);
+
+  const modelClaimsBooked = /(\bagendad[oa]\b|\bconfirmad[oa]\s+la\s+(llamada|cita)|\breservad[oa]\b|\bapartad[oa]\b|he\s+agendad|ya\s+(?:est[áa]\s+)?agendad|te\s+llamar[áa]|te\s+llame\b|te\s+marca|te\s+contacta(?:r[áa])?|agendamos|le\s+paso\s+(?:a\s+|los\s+comentarios)|paso\s+(?:a\s+|el\s+caso\s+a\s+)Efra)/i.test(replyText || '');
   const modelStalls = /(d[eé]jame\s+confirmar|te\s+aviso\s+en\s+un\s+momento|un\s+momento,?\s+por\s+favor|voy\s+a\s+confirmar|enseguida\s+te\s+confirmo)/i.test(replyText || '');
-  if (!action.book_slot && (modelClaimsBooked || modelStalls) && hasExplicitTime) {
+  if (!action.book_slot && (modelClaimsBooked || modelStalls) && hasTimeContext) {
     console.warn(`[${leadName || 'Lead'}] modelo confirmó llamada sin book_slot — disparando escalación con callback parseado`);
-    const parsedTs = parseCallbackTimestamp(userMessage);
+    // Parsear hora: primero en userMessage, si no ahí, en replyText o history reciente
+    const parsedTs = parseCallbackTimestamp(userMessage)
+      || parseCallbackTimestamp(replyText)
+      || parseCallbackTimestamp(recentText);
     const callbackIso = parsedTs ? parsedTs.toISOString() : null;
     const callbackHuman = parsedTs
       ? new Intl.DateTimeFormat('es-MX', {
