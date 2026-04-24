@@ -361,10 +361,16 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   const activeStage = !['confirmado', 'finalizado'].includes(conversation.stage);
   const profileData = conversation.profile || {};
   const profileFieldsCount = Object.keys(profileData).filter(k => profileData[k] != null && profileData[k] !== '').length;
-  const leadAskedToBook = !isInitial && /\b(agend|cita|llamada|horario|hora|slot|disponib|cu[áa]ndo)\b/i.test(userMessage || '');
+  const leadAskedToBook = !isInitial && /\b(agend|cita|llamada|horario|hora|slot|disponib|cu[áa]ndo|marc|llam)\b/i.test(userMessage || '');
+  // Detectar hora explícita: "5 pm", "11am", "3 de la tarde", "17:00", "mañana 10"
+  const hasExplicitTime = !isInitial && (
+    /\b\d{1,2}\s*(?::\d{2})?\s*(am|pm|hrs?|h\.?)\b/i.test(userMessage || '') ||
+    /\b\d{1,2}\s*(?:de la|de)\s+(ma[ñn]ana|tarde|noche)/i.test(userMessage || '') ||
+    /\b(en\s+\d+\s+(?:hora|minuto)s?|ma[ñn]ana|hoy|pr[óo]xim|siguiente|m[áa]s tarde)\b/i.test(userMessage || '')
+  );
   const stageAllowsSlots = conversation.stage === 'proponiendo_horario';
   const profileReady = profileFieldsCount >= 2;
-  const shouldExposeSlots = activeStage && (stageAllowsSlots || profileReady || leadAskedToBook);
+  const shouldExposeSlots = activeStage && (stageAllowsSlots || profileReady || leadAskedToBook || hasExplicitTime);
 
   if (shouldExposeSlots) {
     availableSlots = await getNextSlots({ daysAhead: 7, take: 6 });
@@ -424,6 +430,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     return;
   }
 
+  // Rescue: si el modelo no setó book_slot pero el lead dio hora explícita, cargar slots on-demand
+  if (!action.book_slot && !isInitial && hasExplicitTime && availableSlots.length === 0) {
+    availableSlots = await getNextSlots({ daysAhead: 7, take: 12 });
+    slotPairs = formatSlotPairs(availableSlots, 12);
+    console.log(`[${leadName || 'Lead'}] rescue: cargué ${availableSlots.length} slots on-demand por hora explícita en "${userMessage}"`);
+  }
+
   if (!action.book_slot && !isInitial && availableSlots.length > 0) {
     const rescuedSlot = tryMatchUserOptionNumber(userMessage, availableSlots) || tryMatchUserTimeToSlot(userMessage, availableSlots);
     if (rescuedSlot) {
@@ -433,6 +446,31 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
       if (pair) {
         replyText = `Listo, te agendo para ${pair.human}.\n\nEs una llamada de ~10 min con el asesor.\n\nTe llegará confirmación 📩`;
       }
+    }
+  }
+
+  // Fallback crítico: si el modelo mintió ("está agendado" en texto) pero no hay book_slot,
+  // escalar de todos modos para que el asesor contacte manualmente con la ventana que pidió el lead
+  const modelClaimsBooked = /(est[áa]\s+agendad|qued[óo]\s+agendad|te\s+llamar[áa]|te\s+marca|agendamos)/i.test(replyText || '');
+  if (!action.book_slot && modelClaimsBooked && hasExplicitTime) {
+    console.warn(`[${leadName || 'Lead'}] modelo dijo "agendado" sin book_slot — disparando escalación con callback manual`);
+    try {
+      const oppForFallback = await findContactOpportunity(contactId);
+      await dispatchEscalationNotifications({
+        contactId,
+        conversationId: conversation.id,
+        leadName: leadName || fullName,
+        phone: contact?.phone,
+        advisor,
+        reason: 'appointment-booked',
+        triggeringMessage: userMessage,
+        profile: { ...(conversation.profile || {}), ...(action.profile_updates || {}), intent: action.intent },
+        callbackWindow: `lead pidió: "${userMessage}" (sin slot en calendario, agendar manual)`,
+        opportunityId: oppForFallback?.id || null
+      });
+      await updateConversation(contactId, { stage: 'confirmado', intent: action.intent });
+    } catch (notifErr) {
+      console.error(`[${leadName || fullName}] fallo en fallback notif:`, notifErr.message);
     }
   }
 
