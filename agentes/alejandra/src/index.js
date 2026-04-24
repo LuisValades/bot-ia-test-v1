@@ -534,7 +534,7 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
   // ("déjame confirmar", "te aviso en un momento") o promete llamada sin book_slot,
   // escalar de todos modos para que el asesor contacte manualmente con la ventana
   // que pidió el lead.
-  const modelClaimsBooked = /(est[áa]\s+agendad|qued[óo]\s+agendad|te\s+llamar[áa]|te\s+marca|agendamos|le\s+paso\s+a\s+[A-Z])/i.test(replyText || '');
+  const modelClaimsBooked = /(\bagendad[oa]\b|\bconfirmad[oa]\s+la\s+(llamada|cita)|\breservad[oa]\b|\bapartad[oa]\b|he\s+agendad|ya\s+(?:est[áa]\s+)?agendad|te\s+llamar[áa]|te\s+marca|te\s+contacta(?:r[áa])?|agendamos|le\s+paso\s+(?:a\s+|los\s+comentarios)|paso\s+(?:a\s+|el\s+caso\s+a\s+)Efra)/i.test(replyText || '');
   const modelStalls = /(d[eé]jame\s+confirmar|te\s+aviso\s+en\s+un\s+momento|un\s+momento,?\s+por\s+favor|voy\s+a\s+confirmar|enseguida\s+te\s+confirmo)/i.test(replyText || '');
   if (!action.book_slot && (modelClaimsBooked || modelStalls) && hasExplicitTime) {
     console.warn(`[${leadName || 'Lead'}] modelo dijo "agendado" sin book_slot — disparando escalación con callback manual`);
