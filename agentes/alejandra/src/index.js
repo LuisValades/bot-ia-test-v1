@@ -305,20 +305,43 @@ const ADVISOR_STATIC_MAP = {
 };
 
 async function resolveAdvisor(contact) {
-  const advisorId = contact?.assignedTo;
+  // Prioridad: asesor de la OPORTUNIDAD (opportunity.assignedTo).
+  // Fallback: asesor del contacto (contact.assignedTo).
+  let advisorId = null;
+  let source = null;
+
+  if (contact?.id) {
+    try {
+      const opp = await findContactOpportunity(contact.id);
+      if (opp?.assignedTo) {
+        advisorId = opp.assignedTo;
+        source = `opportunity:${opp.id}`;
+      }
+    } catch (err) {
+      console.warn('[resolveAdvisor] fallo buscando opp:', err.message);
+    }
+  }
+
+  if (!advisorId && contact?.assignedTo) {
+    advisorId = contact.assignedTo;
+    source = 'contact';
+  }
+
   if (!advisorId) return null;
+
   const staticInfo = ADVISOR_STATIC_MAP[advisorId] || {};
   const user = await getUser(advisorId);
-  if (!user) {
-    return { id: advisorId, name: null, email: staticInfo.email || null, phone: staticInfo.phone || null };
-  }
-  const name = user.firstName || user.name || (user.email ? user.email.split('@')[0] : null);
-  return {
+  const name = user
+    ? (user.firstName || user.name || (user.email ? user.email.split('@')[0] : null))
+    : null;
+  const advisor = {
     id: advisorId,
     name,
-    email: user.email || staticInfo.email || null,
-    phone: user.phone || staticInfo.phone || null
+    email: user?.email || staticInfo.email || null,
+    phone: user?.phone || staticInfo.phone || null,
+    source
   };
+  return advisor;
 }
 
 function coerceMessage(val) {
