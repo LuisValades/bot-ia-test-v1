@@ -196,6 +196,34 @@ export async function moveOpportunityStage({ opportunityId, pipelineId, stageId 
  * @param {string} assignedTo - userId del asesor
  * @param {string} dueDate - ISO string (cuándo es la llamada)
  */
+/**
+ * Busca un contacto por email en el location actual. Retorna el contact completo
+ * (con id, firstName, lastName, phone, email). Cache en memoria por proceso.
+ */
+const _contactEmailCache = new Map();
+export async function findContactByEmail(email) {
+  if (!email) return null;
+  const key = String(email).toLowerCase().trim();
+  if (_contactEmailCache.has(key)) return _contactEmailCache.get(key);
+  try {
+    // POST /contacts/search (v2) con filters
+    const { data } = await ghlV2.post('/contacts/search', {
+      locationId: LOCATION_ID,
+      pageLimit: 5,
+      filters: [
+        { field: 'email', operator: 'eq', value: key }
+      ]
+    });
+    const contacts = data?.contacts || data?.data || [];
+    const match = contacts.find(c => String(c.email || '').toLowerCase() === key) || contacts[0] || null;
+    if (match?.id) _contactEmailCache.set(key, match);
+    return match;
+  } catch (err) {
+    console.warn(`[ghl] findContactByEmail(${email}) falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
 export async function createTask({ contactId, title, body, assignedTo, dueDate }) {
   if (!contactId || !title) return null;
   try {

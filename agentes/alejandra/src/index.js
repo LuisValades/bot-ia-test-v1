@@ -2,7 +2,7 @@ import './env.js';
 import express from 'express';
 import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage, clearConversation } from './db.js';
-import { sendSMS, getContact, getUser, createContactNote, createOpportunityNote, createInternalComment, createTask, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
+import { sendSMS, getContact, getUser, createContactNote, createOpportunityNote, createInternalComment, createTask, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage, findContactByEmail } from './ghl.js';
 import { sendEscalationEmail, isEmailEnabled } from './notifications.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
@@ -125,6 +125,12 @@ async function handleTrigger(payload) {
   if (!contactId) return console.warn('Trigger sin contactId');
 
   const contact = await getContact(contactId).catch(() => null);
+
+  if (isAdvisorContact(contact)) {
+    console.log(`[${contactId}] trigger para contacto asesor (${contact.email}) — IGNORADO`);
+    return;
+  }
+
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
   const phone = contact?.phone || body.phone;
   const advisor = await resolveAdvisor(contact);
@@ -206,6 +212,14 @@ async function handleReply(payload) {
   }
 
   const contact = await getContact(contactId).catch(() => null);
+
+  // Safeguard: si el contacto es un asesor del equipo (email en ADVISOR_EMAILS),
+  // NO responder. Protege contra loops cuando el asesor responde al SMS del bot.
+  if (isAdvisorContact(contact)) {
+    console.log(`[${contactId}] contacto es asesor (${contact.email}) — bot IGNORA el mensaje`);
+    return;
+  }
+
   const fullName = contact?.contactName || contact?.firstName || body.full_name || 'Lead';
   const phone = contact?.phone || body.phone;
   const advisor = await resolveAdvisor(contact);
@@ -303,6 +317,21 @@ const ADVISOR_STATIC_MAP = {
     phone: process.env.GHL_SAUL_PHONE || null
   }
 };
+
+// Set de emails de asesores (para NO tratar al asesor como lead si responde por error al SMS del bot)
+const ADVISOR_EMAILS = new Set(
+  Object.values(ADVISOR_STATIC_MAP)
+    .map(v => (v.email || '').toLowerCase().trim())
+    .filter(Boolean)
+);
+
+function isAdvisorContact(contact) {
+  if (!contact) return false;
+  const email = String(contact.email || '').toLowerCase().trim();
+  if (email && ADVISOR_EMAILS.has(email)) return true;
+  // Alternativa: si el assignedTo del contacto coincide con su propio id (self-assigned = asesor)
+  return false;
+}
 
 async function resolveAdvisor(contact) {
   // Prioridad: asesor de la OPORTUNIDAD (opportunity.assignedTo).
@@ -797,6 +826,45 @@ function detectTone(triggeringMessage, history = []) {
   return 'neutral';
 }
 
+/**
+ * Envía SMS corto al asesor al contacto GHL del asesor (busca por email).
+ * El SMS sale desde el número del bot. Incluye nota "(automático)" para evitar
+ * que el asesor intente responder al lead por ahí.
+ */
+async function sendAdvisorSMS({ advisor, leadName, leadPhone, callbackWindow, product, reason }) {
+  if (!advisor?.email) {
+    return { sent: false, error: 'advisor sin email' };
+  }
+  try {
+    const advisorContact = await findContactByEmail(advisor.email);
+    if (!advisorContact?.id) {
+      return { sent: false, error: `advisor no existe como contacto en GHL (email ${advisor.email})` };
+    }
+
+    const reasonLabel =
+      reason === 'lead-requested' ? 'pidió humano'
+        : reason === 'appointment-booked' ? 'quiere llamada'
+        : reason === 'profile-complete' ? 'lead calificado'
+        : 'escalación';
+
+    const lines = [
+      `🔔 Alejandra bot — ${reasonLabel}`,
+      `Lead: ${leadName || '(s/n)'}${leadPhone ? ` · ${leadPhone}` : ''}`,
+      product ? `Producto: ${product}` : null,
+      callbackWindow ? `Ventana: ${callbackWindow}` : null,
+      'Revisa tarea + nota en GHL.',
+      '(automático — no responder aquí)'
+    ].filter(Boolean);
+    const msg = lines.join('\n');
+
+    const res = await sendSMS({ contactId: advisorContact.id, message: msg });
+    return { sent: true, messageId: res?.messageId || res?.id || null, advisorContactId: advisorContact.id };
+  } catch (err) {
+    console.warn('[sendAdvisorSMS] err:', err.response?.data || err.message);
+    return { sent: false, error: err.response?.data?.message || err.message };
+  }
+}
+
 async function dispatchEscalationNotifications({
   contactId,
   conversationId,
@@ -849,6 +917,8 @@ async function dispatchEscalationNotifications({
   const monto = profile?.monto || profile?.valor_propiedad || '';
   const taskTitle = `Llamar a ${leadName || 'lead'}${intent ? ` · ${intent}` : ''}${monto ? ` · ${monto}` : ''}${callbackWindow ? ` · ${callbackWindow}` : ''}`.slice(0, 120);
 
+  const product = profile?.intent || profile?.producto || null;
+
   const results = await Promise.allSettled([
     isEmailEnabled()
       ? sendEscalationEmail({
@@ -873,18 +943,29 @@ async function dispatchEscalationNotifications({
       body: noteBody,
       assignedTo: advisor?.id || null,
       dueDate: dueDate || null
+    }),
+    sendAdvisorSMS({
+      advisor,
+      leadName,
+      leadPhone: phone,
+      callbackWindow,
+      product,
+      reason
     })
   ]);
 
-  const [emailRes, contactNoteRes, oppNoteRes, internalRes, taskRes] = results;
+  const [emailRes, contactNoteRes, oppNoteRes, internalRes, taskRes, smsRes] = results;
   console.log(
-    `[${leadName}] notifs → email:${emailRes.status === 'fulfilled' && emailRes.value?.sent ? 'OK' : 'X'} contact-note:${contactNoteRes.status === 'fulfilled' ? 'OK' : 'X'} opp-note:${oppNoteRes.status === 'fulfilled' && oppNoteRes.value ? 'OK' : 'skip'} internal:${internalRes.status === 'fulfilled' && internalRes.value ? 'OK' : 'skip'} task:${taskRes.status === 'fulfilled' && taskRes.value ? 'OK' : 'X'}`
+    `[${leadName}] notifs → email:${emailRes.status === 'fulfilled' && emailRes.value?.sent ? 'OK' : 'X'} contact-note:${contactNoteRes.status === 'fulfilled' ? 'OK' : 'X'} opp-note:${oppNoteRes.status === 'fulfilled' && oppNoteRes.value ? 'OK' : 'skip'} internal:${internalRes.status === 'fulfilled' && internalRes.value ? 'OK' : 'skip'} task:${taskRes.status === 'fulfilled' && taskRes.value ? 'OK' : 'X'} advisor-sms:${smsRes.status === 'fulfilled' && smsRes.value?.sent ? 'OK' : 'X'}`
   );
   if (emailRes.status === 'fulfilled' && !emailRes.value?.sent && emailRes.value?.error) {
     console.warn(`[${leadName}] email err: ${emailRes.value.error}`);
   }
   if (taskRes.status === 'rejected') {
     console.warn(`[${leadName}] task err:`, taskRes.reason?.message);
+  }
+  if (smsRes.status === 'fulfilled' && !smsRes.value?.sent) {
+    console.warn(`[${leadName}] advisor-sms err: ${smsRes.value?.error}`);
   }
 }
 
