@@ -2,28 +2,16 @@
 
 import { ReactNode } from 'react';
 import Sidebar from './Sidebar';
-import TopBar, { type Tab } from './TopBar';
+import TopBar from './TopBar';
 import GhlStrip from './GhlStrip';
 
 interface Props {
   children: ReactNode;
   title?: string;
   subtitle?: string;
-  tab?: Tab;
-  onTabChange?: (t: Tab) => void;
-  showTabs?: boolean;
-  suggestionsCount?: number;
 }
 
-export default function AppShell({
-  children,
-  title,
-  subtitle,
-  tab,
-  onTabChange,
-  showTabs = false,
-  suggestionsCount = 0
-}: Props) {
+export default function AppShell({ children, title, subtitle }: Props) {
   return (
     <div
       className="grid h-screen w-screen"
@@ -31,14 +19,7 @@ export default function AppShell({
     >
       <Sidebar />
       <main className="flex min-w-0 flex-col overflow-hidden">
-        <TopBar
-          title={title}
-          subtitle={subtitle}
-          tab={tab}
-          onTabChange={onTabChange}
-          showTabs={showTabs}
-          suggestionsCount={suggestionsCount}
-        />
+        <TopBar title={title} subtitle={subtitle} />
         <GhlStrip />
         <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
       </main>

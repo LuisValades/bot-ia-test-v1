@@ -2,15 +2,9 @@ import { openrouter } from './openrouter.js';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { searchKB, formatChunksAsContext, isRagEnabled } from './rag.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const KNOWLEDGE_PATH = join(__dirname, '..', 'knowledge.md');
-const KNOWLEDGE = existsSync(KNOWLEDGE_PATH) ? readFileSync(KNOWLEDGE_PATH, 'utf-8') : '';
-if (KNOWLEDGE) {
-  console.log(`[ai] knowledge.md cargado: ${KNOWLEDGE.length} chars (~${Math.round(KNOWLEDGE.length / 4)} tokens)`);
-} else {
-  console.warn('[ai] knowledge.md NO encontrado, Alejandra responderá sin base de conocimiento');
-}
 
 const SYSTEM_PROMPT_PATH = join(__dirname, '..', 'system-prompt.md');
 const SYSTEM_PROMPT = existsSync(SYSTEM_PROMPT_PATH)
@@ -22,7 +16,38 @@ if (SYSTEM_PROMPT) {
   console.warn('[ai] system-prompt.md NO encontrado — Alejandra no tiene instrucciones');
 }
 
+if (isRagEnabled()) {
+  console.log('[ai] RAG habilitado — Pinecone como base de conocimiento');
+} else {
+  console.warn('[ai] RAG deshabilitado — Alejandra responderá solo con system prompt');
+}
+
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
+const RAG_TOP_K = parseInt(process.env.RAG_TOP_K || '5', 10);
+const RAG_MIN_QUERY_LEN = 3;
+
+async function retrieveKnowledge(userMessage, attachments) {
+  if (!isRagEnabled()) return '';
+  const parts = [];
+  if (userMessage && userMessage.trim().length >= RAG_MIN_QUERY_LEN) {
+    parts.push(userMessage.trim());
+  }
+  const audios = (attachments || []).filter(a => a.kind === 'audio' && a.transcript);
+  for (const a of audios) parts.push(a.transcript);
+  const query = parts.join(' ').slice(0, 1500).trim();
+  if (query.length < RAG_MIN_QUERY_LEN) return '';
+  try {
+    const chunks = await searchKB(query, RAG_TOP_K);
+    if (!chunks || chunks.length === 0) return '';
+    const formatted = formatChunksAsContext(chunks);
+    return `${formatted}
+
+INSTRUCCIÓN: Usa estos chunks solo como referencia para responder con precisión. NO copies texto literal al SMS (salvo frases canónicas marcadas explícitamente en el playbook). Extrae lo esencial y respétalo con las reglas de tono del system prompt (3-5 frases, tuteo, 1 emoji máx, cero listas).`;
+  } catch (err) {
+    console.warn('[ai] searchKB falló:', err.message);
+    return '';
+  }
+}
 
 
 export async function chat({ history, userMessage, contactName, hasName, slotsContext, slotsMenu = '', slotPairs = [], availableSlotsIso = [], attachments = [], postBookingContext = null, profile = null, advisor = null, tags = [], isReactivation = false }) {
@@ -52,9 +77,11 @@ REGLAS:
 5. Mantén los horarios DEL MENÚ actual, ignora horarios de mensajes previos del historial (pueden estar caducos).`
     : null;
 
+  const ragContext = await retrieveKnowledge(userMessage, attachments);
+
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
-    ...(KNOWLEDGE ? [{ role: 'system', content: `BASE DE CONOCIMIENTO — Crediexpres / Luis Valades. Consulta esto cuando el lead pregunte por productos, tasas, bancos, requisitos, FAQ. NO copies tablas largas al SMS — extrae lo esencial en 1-2 frases.\n\n${KNOWLEDGE}` }] : []),
+    ...(ragContext ? [{ role: 'system', content: ragContext }] : []),
     { role: 'system', content: nameContext },
     ...(advisor?.name
       ? [{ role: 'system', content: `ASESOR ASIGNADO a este lead: ${advisor.name}. Cuando propongas la llamada de 10 min, MENCIÓNALO POR NOMBRE (ej. "podemos agendar una llamada con ${advisor.name}, es parte de nuestro equipo"). La cita quedará asignada automáticamente a ${advisor.name}.` }]

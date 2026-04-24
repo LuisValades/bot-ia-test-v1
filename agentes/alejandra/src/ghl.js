@@ -185,3 +185,42 @@ export async function moveOpportunityStage({ opportunityId, pipelineId, stageId 
     return null;
   }
 }
+
+export async function createOpportunityNote({ opportunityId, body, userId }) {
+  if (!opportunityId || !body) return null;
+  try {
+    const payload = { body };
+    if (userId) payload.userId = userId;
+    const { data } = await ghlV2.post(`/opportunities/${opportunityId}/notes`, payload);
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] createOpportunityNote ${opportunityId} falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}
+
+/**
+ * Intenta crear un comentario interno (no visible al lead) en la conversación GHL.
+ * GHL no documenta un endpoint oficial para esto; probamos /messages/inbound con
+ * type 'Custom' (equivale a una anotación en el timeline). Si la API lo rechaza,
+ * log y seguir — la nota del contacto ya cubre el registro.
+ */
+export async function createInternalComment({ contactId, conversationId, body }) {
+  if (!body) return null;
+  if (!conversationId && !contactId) return null;
+  try {
+    const payload = {
+      type: 'Custom',
+      message: body,
+      direction: 'inbound',
+      altId: `alejandra-internal-${Date.now()}`
+    };
+    if (contactId) payload.contactId = contactId;
+    if (conversationId) payload.conversationId = conversationId;
+    const { data } = await ghlV1.post('/conversations/messages/inbound', payload);
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] createInternalComment falló:`, err.response?.data?.message || err.message);
+    return null;
+  }
+}

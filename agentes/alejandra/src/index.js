@@ -2,7 +2,8 @@ import './env.js';
 import express from 'express';
 import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage } from './db.js';
-import { sendSMS, getContact, getUser, createAppointment, createContactNote, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
+import { sendSMS, getContact, getUser, createAppointment, createContactNote, createOpportunityNote, createInternalComment, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
+import { sendEscalationEmail, isEmailEnabled } from './notifications.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
 import { runFollowups } from './followup.js';
@@ -201,9 +202,11 @@ async function handleReply(payload) {
       contactId,
       conversationId: conversation.id,
       leadName: conversation.full_name || fullName,
+      phone: contact?.phone,
       advisor,
       reason: 'lead-requested',
-      triggeringMessage: userMessage
+      triggeringMessage: userMessage,
+      profile: conversation.profile || {}
     });
     return;
   }
@@ -344,13 +347,17 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
 
   if (action.needs_escalation) {
     console.log(`[${leadName || 'Lead'}] AI pidió escalación`);
+    const mergedProfileForEsc = { ...(conversation.profile || {}), ...(action.profile_updates || {}) };
     await escalateToAdvisor({
       contactId,
       conversationId: conversation.id,
       leadName: leadName || fullName,
+      phone: contact?.phone,
       advisor,
       reason: 'ai-cannot-answer',
-      triggeringMessage: userMessage
+      triggeringMessage: userMessage,
+      profile: mergedProfileForEsc,
+      callbackWindow: mergedProfileForEsc.callback_window || null
     });
     return;
   }
@@ -445,6 +452,24 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
           appointment_at: appointmentAt
         });
         await createBookingNote({ contactId, leadName: leadName || fullName, profile: conversation.profile || {}, intent: action.intent, appointmentAt: matched, advisor });
+
+        try {
+          const oppForBooking = await findContactOpportunity(contactId);
+          await dispatchEscalationNotifications({
+            contactId,
+            conversationId: conversation.id,
+            leadName: leadName || fullName,
+            phone: contact?.phone,
+            advisor,
+            reason: 'appointment-booked',
+            triggeringMessage: userMessage,
+            profile: { ...(conversation.profile || {}), ...(action.profile_updates || {}), intent: action.intent },
+            callbackWindow: formatSlotEs ? formatSlotEs(matched) : matched,
+            opportunityId: oppForBooking?.id || null
+          });
+        } catch (notifErr) {
+          console.error(`[${leadName || fullName}] fallo notificando cita:`, notifErr.message);
+        }
       } catch (err) {
         const msg = err.response?.data?.message || err.message;
         console.error('Error creando cita:', err.response?.data || err.message);
@@ -602,7 +627,92 @@ async function handleBlockRequest({ contactId, conversationId, leadName }) {
   console.log(`[${leadName}] 🛑 lead bloqueado. No responde más.`);
 }
 
-async function escalateToAdvisor({ contactId, conversationId, leadName, advisor, reason, triggeringMessage }) {
+function detectTone(triggeringMessage, history = []) {
+  const text = [(triggeringMessage || ''), ...history.slice(-3).map(m => m.body || '')]
+    .join(' ')
+    .toLowerCase();
+  if (/\b(molesto|enojado|harto|estafa|cagad|demand|queja|inútil|no sirve)\b/.test(text)) return 'molesto';
+  if (/\b(urgente|rápido|pronto|ya|ahorita|ahora)\b/.test(text)) return 'con prisa';
+  if (/\b(gracias|perfecto|excelente|genial|sale)\b/.test(text)) return 'interesado';
+  return 'neutral';
+}
+
+async function dispatchEscalationNotifications({
+  contactId,
+  conversationId,
+  leadName,
+  phone,
+  advisor,
+  reason,
+  triggeringMessage,
+  profile,
+  callbackWindow,
+  opportunityId
+}) {
+  const history = await getRecentMessages(contactId, 15).catch(() => []);
+  const tone = detectTone(triggeringMessage, history);
+
+  const reasonLabel =
+    reason === 'lead-requested'
+      ? 'Lead pidió hablar con humano'
+      : reason === 'profile-complete'
+        ? 'Perfil completo — lead listo para llamada'
+        : reason === 'appointment-booked'
+          ? 'Cita agendada'
+          : 'Escalación automática';
+
+  const profileLines = Object.entries(profile || {})
+    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .map(([k, v]) => `  • ${k}: ${v}`)
+    .join('\n');
+
+  const noteBody = [
+    `⚠️ ${reasonLabel}`,
+    '',
+    `Lead: ${leadName || '(sin nombre)'}${phone ? ` · ${phone}` : ''}`,
+    `Asesor asignado: ${advisor?.name || '(sin asesor)'}`,
+    callbackWindow ? `Ventana callback: ${callbackWindow}` : null,
+    `Tono detectado: ${tone}`,
+    '',
+    profileLines ? `Perfil capturado:\n${profileLines}` : null,
+    '',
+    triggeringMessage ? `Último mensaje del lead: "${triggeringMessage.slice(0, 300)}"` : null,
+    '',
+    '— Alejandra dejó de responder. Toma tú la conversación.'
+  ]
+    .filter(v => v !== null && v !== undefined)
+    .join('\n');
+
+  const results = await Promise.allSettled([
+    isEmailEnabled()
+      ? sendEscalationEmail({
+          advisor,
+          leadName,
+          contactId,
+          phone,
+          profile,
+          reason,
+          callbackWindow,
+          tone,
+          history,
+          triggeringMessage
+        })
+      : Promise.resolve({ sent: false, error: 'email disabled' }),
+    createContactNote({ contactId, body: noteBody }),
+    opportunityId ? createOpportunityNote({ opportunityId, body: noteBody }) : Promise.resolve(null),
+    createInternalComment({ contactId, conversationId, body: noteBody })
+  ]);
+
+  const [emailRes, contactNoteRes, oppNoteRes, internalRes] = results;
+  console.log(
+    `[${leadName}] notifs → email:${emailRes.status === 'fulfilled' && emailRes.value?.sent ? 'OK' : 'X'} contact-note:${contactNoteRes.status === 'fulfilled' ? 'OK' : 'X'} opp-note:${oppNoteRes.status === 'fulfilled' && oppNoteRes.value ? 'OK' : 'skip'} internal:${internalRes.status === 'fulfilled' && internalRes.value ? 'OK' : 'skip'}`
+  );
+  if (emailRes.status === 'fulfilled' && !emailRes.value?.sent && emailRes.value?.error) {
+    console.warn(`[${leadName}] email err: ${emailRes.value.error}`);
+  }
+}
+
+async function escalateToAdvisor({ contactId, conversationId, leadName, advisor, reason, triggeringMessage, profile, callbackWindow, phone }) {
   const farewellMsg = 'Va, te paso con un asesor.\n\nTe contacta en unos minutos directamente.\n\n¡Gracias por escribir! 🙌';
   const escalationTag = (process.env.GHL_ESCALATION_TAG || 'atencion-asesor').trim();
   const botTag = (process.env.GHL_BOT_TAG || 'bot ia').trim();
@@ -632,34 +742,37 @@ async function escalateToAdvisor({ contactId, conversationId, leadName, advisor,
     removeContactTags(contactId, [botTag])
   ]);
 
-  if (escalationStageId && escalationPipelineId) {
-    const opp = await findContactOpportunity(contactId);
-    if (opp?.id) {
+  let opportunityId = null;
+  const opp = await findContactOpportunity(contactId);
+  if (opp?.id) {
+    opportunityId = opp.id;
+    if (escalationStageId && escalationPipelineId) {
       await moveOpportunityStage({
         opportunityId: opp.id,
         pipelineId: escalationPipelineId,
         stageId: escalationStageId
       });
       console.log(`[${leadName}] oportunidad movida a etapa de escalación ${escalationStageId}`);
-    } else {
-      console.warn(`[${leadName}] no encontré oportunidad para mover a escalación`);
     }
+  } else {
+    console.warn(`[${leadName}] no encontré oportunidad para escalación`);
   }
 
   try {
-    const noteBody = [
-      '⚠️ ESCALACIÓN AUTOMÁTICA — El lead pide atención humana.',
-      '',
-      `Lead: ${leadName || '(sin nombre)'}`,
-      `Asesor asignado: ${advisor?.name || '(sin asesor)'}`,
-      `Razón: ${reason === 'lead-requested' ? 'el lead pidió hablar con humano' : 'el bot no pudo responder'}`,
-      triggeringMessage ? `Último mensaje del lead: "${triggeringMessage.slice(0, 300)}"` : '',
-      '',
-      '— Alejandra dejó de responder. Toma tú la conversación.'
-    ].filter(Boolean).join('\n');
-    await createContactNote({ contactId, body: noteBody });
+    await dispatchEscalationNotifications({
+      contactId,
+      conversationId,
+      leadName,
+      phone,
+      advisor,
+      reason,
+      triggeringMessage,
+      profile,
+      callbackWindow,
+      opportunityId
+    });
   } catch (err) {
-    console.error(`[${leadName}] fallo creando nota de escalación:`, err.message);
+    console.error(`[${leadName}] fallo en dispatchEscalationNotifications:`, err.message);
   }
 
   console.log(`[${leadName}] ✅ escalación ejecutada. Tags: +${escalationTag}, -${botTag}. Bot no vuelve a responder.`);

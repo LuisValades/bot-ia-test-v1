@@ -26,3 +26,7 @@ trainer/logs/
 # claude code local config (per-workspace)
 .claude/
 trainer/.env.modal
+
+# tsc incremental build info
+*.tsbuildinfo
+
