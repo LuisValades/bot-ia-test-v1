@@ -2,7 +2,7 @@ import './env.js';
 import express from 'express';
 import cron from 'node-cron';
 import { getOrCreateConversation, updateConversation, getRecentMessages, logMessage, clearConversation } from './db.js';
-import { sendSMS, getContact, getUser, createAppointment, createContactNote, createOpportunityNote, createInternalComment, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
+import { sendSMS, getContact, getUser, createContactNote, createOpportunityNote, createInternalComment, createTask, addContactTags, removeContactTags, findContactOpportunity, moveOpportunityStage } from './ghl.js';
 import { sendEscalationEmail, isEmailEnabled } from './notifications.js';
 import { chat } from './ai.js';
 import { getNextSlots, formatSlotsForLead, formatSlotPairs, formatSlotsMenu, findSlotMatch, tryMatchUserTimeToSlot, tryMatchUserOptionNumber, formatSlotEs } from './calendar.js';
@@ -283,13 +283,42 @@ async function handleReply(payload) {
   await runTurn({ conversation, contactId, fullName, userMessage, attachments, advisor, tags, isReactivation: false });
 }
 
+// Mapa estático de asesores por userId (email + phone para notificaciones).
+// Complementa la info que llega de la API GHL Users.
+const ADVISOR_STATIC_MAP = {
+  [process.env.GHL_LUIS_USER_ID || '']: {
+    email: process.env.GHL_LUIS_ADVISOR_EMAIL || 'luis@crediexpres.com',
+    phone: process.env.GHL_LUIS_ADVISOR_PHONE || null
+  },
+  [process.env.GHL_EFRAIN_USER_ID || '']: {
+    email: process.env.GHL_EFRAIN_EMAIL || 'efrain@crediexpres.com',
+    phone: process.env.GHL_EFRAIN_PHONE || null
+  },
+  [process.env.GHL_JONNY_USER_ID || '']: {
+    email: process.env.GHL_JONNY_EMAIL || 'jonny@crediexpres.com',
+    phone: process.env.GHL_JONNY_PHONE || null
+  },
+  [process.env.GHL_SAUL_USER_ID || '']: {
+    email: process.env.GHL_SAUL_EMAIL || 'saul@crediexpres.com',
+    phone: process.env.GHL_SAUL_PHONE || null
+  }
+};
+
 async function resolveAdvisor(contact) {
   const advisorId = contact?.assignedTo;
   if (!advisorId) return null;
+  const staticInfo = ADVISOR_STATIC_MAP[advisorId] || {};
   const user = await getUser(advisorId);
-  if (!user) return { id: advisorId, name: null };
+  if (!user) {
+    return { id: advisorId, name: null, email: staticInfo.email || null, phone: staticInfo.phone || null };
+  }
   const name = user.firstName || user.name || (user.email ? user.email.split('@')[0] : null);
-  return { id: advisorId, name, email: user.email };
+  return {
+    id: advisorId,
+    name,
+    email: user.email || staticInfo.email || null,
+    phone: user.phone || staticInfo.phone || null
+  };
 }
 
 function coerceMessage(val) {
@@ -522,72 +551,35 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
         intent: action.intent
       });
     } else {
-      const appointmentPayload = {
-        contactId,
-        startTime: matched,
-        title: `Llamada 10 min - ${fullName}`
-      };
-      if (advisor?.id) appointmentPayload.assignedUserId = advisor.id;
+      // Nota: NO se crea evento en calendar del asesor. En su lugar, creamos una
+      // actividad pendiente (task GHL) + disparamos email + notas. El asesor
+      // agenda manualmente en su calendario cuando reciba la notificación.
+      appointmentAt = matched;
+      await updateConversation(contactId, {
+        stage: 'confirmado',
+        intent: action.intent,
+        appointment_at: appointmentAt
+      });
 
       try {
-        let appt;
-        try {
-          appt = await createAppointment(appointmentPayload);
-        } catch (teamErr) {
-          const teamMsg = (teamErr.response?.data?.message || '').toLowerCase();
-          if (appointmentPayload.assignedUserId && teamMsg.includes('not part of calendar team')) {
-            console.warn(`[${leadName || fullName}] asesor ${advisor?.name || advisor?.id} no está en calendar team; reintentando sin assignedUserId`);
-            delete appointmentPayload.assignedUserId;
-            appt = await createAppointment(appointmentPayload);
-          } else {
-            throw teamErr;
-          }
-        }
-        appointmentId = appt.id;
-        appointmentAt = matched;
-        await updateConversation(contactId, {
-          stage: 'confirmado',
-          intent: action.intent,
-          appointment_id: appointmentId,
-          appointment_at: appointmentAt
+        const oppForBooking = await findContactOpportunity(contactId);
+        await dispatchEscalationNotifications({
+          contactId,
+          conversationId: conversation.id,
+          leadName: leadName || fullName,
+          phone: contact?.phone,
+          advisor,
+          reason: 'appointment-booked',
+          triggeringMessage: userMessage,
+          profile: { ...(conversation.profile || {}), ...(action.profile_updates || {}), intent: action.intent },
+          callbackWindow: formatSlotEs ? formatSlotEs(matched) : matched,
+          dueDate: matched,
+          opportunityId: oppForBooking?.id || null
         });
-        await createBookingNote({ contactId, leadName: leadName || fullName, profile: conversation.profile || {}, intent: action.intent, appointmentAt: matched, advisor });
-
-        try {
-          const oppForBooking = await findContactOpportunity(contactId);
-          await dispatchEscalationNotifications({
-            contactId,
-            conversationId: conversation.id,
-            leadName: leadName || fullName,
-            phone: contact?.phone,
-            advisor,
-            reason: 'appointment-booked',
-            triggeringMessage: userMessage,
-            profile: { ...(conversation.profile || {}), ...(action.profile_updates || {}), intent: action.intent },
-            callbackWindow: formatSlotEs ? formatSlotEs(matched) : matched,
-            opportunityId: oppForBooking?.id || null
-          });
-        } catch (notifErr) {
-          console.error(`[${leadName || fullName}] fallo notificando cita:`, notifErr.message);
-        }
-      } catch (err) {
-        const msg = err.response?.data?.message || err.message;
-        console.error('Error creando cita:', err.response?.data || err.message);
-        if (String(msg).toLowerCase().includes('no longer available')) {
-          const freshSlots = await getNextSlots({ daysAhead: 7, take: 3 });
-          const propuesta = formatSlotsForLead(freshSlots, 3);
-          replyText = propuesta
-            ? `Se me acaba de ocupar ese horario 😅. ¿Te viene alguno de estos? ${propuesta}`
-            : 'Ese horario ya se ocupó y no tengo más esta semana. Te contacta el asesor mañana.';
-          await updateConversation(contactId, {
-            stage: 'proponiendo_horario',
-            proposed_slots: freshSlots,
-            intent: action.intent
-          });
-        } else {
-          replyText = 'Tuve un problema técnico agendando. El asesor te contacta en breve para confirmar.';
-        }
+      } catch (notifErr) {
+        console.error(`[${leadName || fullName}] fallo notificando cita:`, notifErr.message);
       }
+
     }
   } else if (!action.propose_slots) {
     await updateConversation(contactId, {
@@ -792,7 +784,8 @@ async function dispatchEscalationNotifications({
   triggeringMessage,
   profile,
   callbackWindow,
-  opportunityId
+  opportunityId,
+  dueDate
 }) {
   const history = await getRecentMessages(contactId, 15).catch(() => []);
   const tone = detectTone(triggeringMessage, history);
@@ -828,6 +821,11 @@ async function dispatchEscalationNotifications({
     .filter(v => v !== null && v !== undefined)
     .join('\n');
 
+  // Título corto para la task (aparece en la lista de actividades del asesor)
+  const intent = profile?.intent || '';
+  const monto = profile?.monto || profile?.valor_propiedad || '';
+  const taskTitle = `Llamar a ${leadName || 'lead'}${intent ? ` · ${intent}` : ''}${monto ? ` · ${monto}` : ''}${callbackWindow ? ` · ${callbackWindow}` : ''}`.slice(0, 120);
+
   const results = await Promise.allSettled([
     isEmailEnabled()
       ? sendEscalationEmail({
@@ -845,15 +843,25 @@ async function dispatchEscalationNotifications({
       : Promise.resolve({ sent: false, error: 'email disabled' }),
     createContactNote({ contactId, body: noteBody }),
     opportunityId ? createOpportunityNote({ opportunityId, body: noteBody }) : Promise.resolve(null),
-    createInternalComment({ contactId, conversationId, body: noteBody })
+    createInternalComment({ contactId, conversationId, body: noteBody }),
+    createTask({
+      contactId,
+      title: taskTitle,
+      body: noteBody,
+      assignedTo: advisor?.id || null,
+      dueDate: dueDate || null
+    })
   ]);
 
-  const [emailRes, contactNoteRes, oppNoteRes, internalRes] = results;
+  const [emailRes, contactNoteRes, oppNoteRes, internalRes, taskRes] = results;
   console.log(
-    `[${leadName}] notifs → email:${emailRes.status === 'fulfilled' && emailRes.value?.sent ? 'OK' : 'X'} contact-note:${contactNoteRes.status === 'fulfilled' ? 'OK' : 'X'} opp-note:${oppNoteRes.status === 'fulfilled' && oppNoteRes.value ? 'OK' : 'skip'} internal:${internalRes.status === 'fulfilled' && internalRes.value ? 'OK' : 'skip'}`
+    `[${leadName}] notifs → email:${emailRes.status === 'fulfilled' && emailRes.value?.sent ? 'OK' : 'X'} contact-note:${contactNoteRes.status === 'fulfilled' ? 'OK' : 'X'} opp-note:${oppNoteRes.status === 'fulfilled' && oppNoteRes.value ? 'OK' : 'skip'} internal:${internalRes.status === 'fulfilled' && internalRes.value ? 'OK' : 'skip'} task:${taskRes.status === 'fulfilled' && taskRes.value ? 'OK' : 'X'}`
   );
   if (emailRes.status === 'fulfilled' && !emailRes.value?.sent && emailRes.value?.error) {
     console.warn(`[${leadName}] email err: ${emailRes.value.error}`);
+  }
+  if (taskRes.status === 'rejected') {
+    console.warn(`[${leadName}] task err:`, taskRes.reason?.message);
   }
 }
 

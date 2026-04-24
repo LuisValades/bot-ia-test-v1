@@ -186,6 +186,34 @@ export async function moveOpportunityStage({ opportunityId, pipelineId, stageId 
   }
 }
 
+/**
+ * Crea una tarea pendiente en GHL asignada al asesor.
+ * El asesor la ve como actividad pendiente en su bandeja + recibe notificación nativa de GHL.
+ *
+ * @param {string} contactId
+ * @param {string} title - título corto (ej. "Llamar a Luis - hipoteca 2M")
+ * @param {string} body - descripción larga (puede ser el resumen completo)
+ * @param {string} assignedTo - userId del asesor
+ * @param {string} dueDate - ISO string (cuándo es la llamada)
+ */
+export async function createTask({ contactId, title, body, assignedTo, dueDate }) {
+  if (!contactId || !title) return null;
+  try {
+    const payload = {
+      title: String(title).slice(0, 255),
+      body: String(body || '').slice(0, 5000),
+      completed: false
+    };
+    if (assignedTo) payload.assignedTo = assignedTo;
+    if (dueDate) payload.dueDate = dueDate;
+    const { data } = await ghlV2.post(`/contacts/${contactId}/tasks`, payload);
+    return data;
+  } catch (err) {
+    console.warn(`[ghl] createTask ${contactId} falló:`, err.response?.data?.message || err.response?.data || err.message);
+    return null;
+  }
+}
+
 export async function createOpportunityNote({ opportunityId, body, userId }) {
   if (!opportunityId || !body) return null;
   try {
