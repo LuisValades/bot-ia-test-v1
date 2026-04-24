@@ -530,10 +530,13 @@ async function runTurn({ conversation, contactId, fullName, userMessage, attachm
     }
   }
 
-  // Fallback crítico: si el modelo mintió ("está agendado" en texto) pero no hay book_slot,
-  // escalar de todos modos para que el asesor contacte manualmente con la ventana que pidió el lead
-  const modelClaimsBooked = /(est[áa]\s+agendad|qued[óo]\s+agendad|te\s+llamar[áa]|te\s+marca|agendamos)/i.test(replyText || '');
-  if (!action.book_slot && modelClaimsBooked && hasExplicitTime) {
+  // Fallback crítico: si el modelo mintió ("está agendado"), deja al lead en limbo
+  // ("déjame confirmar", "te aviso en un momento") o promete llamada sin book_slot,
+  // escalar de todos modos para que el asesor contacte manualmente con la ventana
+  // que pidió el lead.
+  const modelClaimsBooked = /(est[áa]\s+agendad|qued[óo]\s+agendad|te\s+llamar[áa]|te\s+marca|agendamos|le\s+paso\s+a\s+[A-Z])/i.test(replyText || '');
+  const modelStalls = /(d[eé]jame\s+confirmar|te\s+aviso\s+en\s+un\s+momento|un\s+momento,?\s+por\s+favor|voy\s+a\s+confirmar|enseguida\s+te\s+confirmo)/i.test(replyText || '');
+  if (!action.book_slot && (modelClaimsBooked || modelStalls) && hasExplicitTime) {
     console.warn(`[${leadName || 'Lead'}] modelo dijo "agendado" sin book_slot — disparando escalación con callback manual`);
     try {
       const oppForFallback = await findContactOpportunity(contactId);
