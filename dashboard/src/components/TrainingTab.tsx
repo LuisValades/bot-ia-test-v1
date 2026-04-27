@@ -179,25 +179,25 @@ export default function TrainingTab() {
 
   return (
     <div
-      className="grid flex-1 overflow-hidden transition-[grid-template-columns] duration-200"
-      style={{
-        gridTemplateColumns: kbOpen ? 'minmax(0, 1fr) minmax(0, 1.3fr)' : 'minmax(0, 1fr)'
-      }}
+      className={`grid flex-1 overflow-hidden transition-[grid-template-columns] duration-200 ${
+        kbOpen ? 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]' : 'md:grid-cols-[minmax(0,1fr)]'
+      }`}
+      style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}
     >
       {/* LEFT: chat */}
       <div
-        className="flex flex-col overflow-hidden"
+        className={`flex flex-col overflow-hidden ${kbOpen ? 'hidden md:flex' : 'flex'}`}
         style={{ borderRight: kbOpen ? '1px solid var(--border)' : 'none' }}
       >
         <div
-          className="flex flex-wrap items-center gap-[10px] px-[20px] py-[12px]"
+          className="flex flex-wrap items-center gap-[8px] px-[14px] py-[10px] md:gap-[10px] md:px-[20px] md:py-[12px]"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-0)' }}
         >
           <Icon name="chat" size={14} />
-          <div className="text-[13px] font-semibold">
-            Probar bot <span style={{ color: 'var(--accent)' }}>{agent.name}</span>
+          <div className="min-w-0 truncate text-[13px] font-semibold">
+            Probar <span style={{ color: 'var(--accent)' }}>{agent.name}</span>
             <span
-              className="ml-[6px] text-[11.5px]"
+              className="ml-[6px] hidden text-[11.5px] md:inline"
               style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
             >
               · {agent.description.toLowerCase()}
@@ -209,9 +209,13 @@ export default function TrainingTab() {
               type="button"
               onClick={() => setKbOpen(true)}
               className="btn btn-dirty"
+              title={`${dirtyCount} ajuste${dirtyCount > 1 ? 's' : ''} pendiente${dirtyCount > 1 ? 's' : ''}`}
             >
-              <span className="dirty-dot" /> {dirtyCount} ajuste{dirtyCount > 1 ? 's' : ''} pendiente
-              {dirtyCount > 1 ? 's' : ''}
+              <span className="dirty-dot" />
+              <span className="hidden sm:inline">
+                {dirtyCount} ajuste{dirtyCount > 1 ? 's' : ''} pendiente{dirtyCount > 1 ? 's' : ''}
+              </span>
+              <span className="sm:hidden">{dirtyCount}</span>
               <Icon name="chevronRight" size={13} />
             </button>
           )}
@@ -220,11 +224,21 @@ export default function TrainingTab() {
             onClick={() => setKbOpen(v => !v)}
             className="btn"
             style={kbOpen ? { background: 'var(--bg-3)', color: 'var(--fg-0)' } : {}}
+            title={kbOpen ? 'Ocultar conocimiento' : 'Ajustar conocimiento'}
           >
-            <Icon name="book" size={13} /> {kbOpen ? 'Ocultar conocimiento' : 'Ajustar conocimiento'}
+            <Icon name="book" size={13} />
+            <span className="hidden md:inline">
+              {kbOpen ? 'Ocultar conocimiento' : 'Ajustar conocimiento'}
+            </span>
           </button>
-          <button type="button" onClick={() => setMessages([])} className="btn btn-ghost">
-            <Icon name="refresh" size={13} /> Reiniciar
+          <button
+            type="button"
+            onClick={() => setMessages([])}
+            className="btn btn-ghost"
+            title="Reiniciar"
+          >
+            <Icon name="refresh" size={13} />
+            <span className="hidden md:inline">Reiniciar</span>
           </button>
         </div>
 
@@ -356,18 +370,18 @@ export default function TrainingTab() {
         </div>
       </div>
 
-      {/* RIGHT: kb panel */}
+      {/* RIGHT: kb panel — full-screen en mobile, split en desktop */}
       {kbOpen && (
         <div className="flex flex-col overflow-hidden" style={{ background: 'var(--bg-0)' }}>
           <div
-            className="flex flex-wrap items-center gap-[10px] px-[20px] py-[12px]"
+            className="flex flex-wrap items-center gap-[8px] px-[14px] py-[10px] md:gap-[10px] md:px-[20px] md:py-[12px]"
             style={{ borderBottom: '1px solid var(--border)' }}
           >
             <Icon name="book" size={14} />
-            <div className="text-[13px] font-semibold">
-              Conocimiento de <span style={{ color: 'var(--accent)' }}>{agent.name}</span>
+            <div className="min-w-0 truncate text-[13px] font-semibold">
+              Conocimiento <span style={{ color: 'var(--accent)' }}>{agent.name}</span>
               <span
-                className="ml-[6px] text-[11.5px]"
+                className="ml-[6px] hidden text-[11.5px] md:inline"
                 style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)' }}
               >
                 · agentes/{agent.id}/
@@ -377,10 +391,12 @@ export default function TrainingTab() {
             <button
               type="button"
               onClick={() => setKbOpen(false)}
-              className="btn btn-ghost"
-              aria-label="Ocultar panel"
+              className="btn"
+              aria-label="Volver al chat"
             >
-              <Icon name="x" size={13} />
+              <Icon name="chevronRight" size={13} />
+              <span className="md:hidden">Volver al chat</span>
+              <span className="hidden md:inline">Cerrar</span>
             </button>
           </div>
 

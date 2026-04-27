@@ -24,7 +24,7 @@ const agentColors: Record<string, string> = {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { agent: activeAgent, setAgentId } = useApp();
+  const { agent: activeAgent, setAgentId, theme, setTheme } = useApp();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -219,7 +219,15 @@ export default function Sidebar() {
               Admin · Crediexpres
             </div>
           </div>
-          <Icon name="settings" size={14} />
+          <button
+            type="button"
+            aria-label="Cambiar tema"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="grid h-8 w-8 place-items-center rounded-md"
+            style={{ color: 'var(--fg-2)', background: 'var(--bg-2)', border: '1px solid var(--border)' }}
+          >
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={13} />
+          </button>
         </div>
       </aside>
     </>

@@ -14,8 +14,8 @@ interface Props {
 export default function AppShell({ children, title, subtitle }: Props) {
   return (
     <div
-      className="grid h-screen w-screen"
-      style={{ gridTemplateColumns: '248px 1fr', background: 'var(--bg-0)' }}
+      className="grid h-[100dvh] w-screen grid-cols-1 md:grid-cols-[248px_1fr]"
+      style={{ background: 'var(--bg-0)' }}
     >
       <Sidebar />
       <main className="flex min-w-0 flex-col overflow-hidden">
@@ -23,13 +23,6 @@ export default function AppShell({ children, title, subtitle }: Props) {
         <GhlStrip />
         <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
       </main>
-      <style jsx>{`
-        @media (max-width: 767px) {
-          div[style*='grid-template-columns: 248px 1fr'] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
