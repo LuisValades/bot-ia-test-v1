@@ -1,0 +1,111 @@
+{
+  "type": "seguimiento-manual-hipotecarios",
+  "version": 1,
+  "created_at": "2026-05-11T23:40:50.550Z",
+  "pipeline": "Credito Hipotecario",
+  "stage": "Ingreso - Test Agent IA",
+  "instruction": "Auto: respondiendo a leads con inbound pendiente",
+  "total_in_stage": 15,
+  "eligible": [],
+  "skipped": [
+    {
+      "name": "SERGIO LOPEZ Galeana",
+      "contact_id": "EI262b21qLloj6doANL0",
+      "phone": "+525591974283",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Fausto",
+      "contact_id": "tX85EZy4ukPCXgGl8Qiy",
+      "phone": "+524291206003",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Luis",
+      "contact_id": "mexA95OTp8xKth28URPl",
+      "phone": "+523310000025",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Rich",
+      "contact_id": "CyUtYb2Ft2vLI2eaTkmb",
+      "phone": "+529933404901",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Lawrence",
+      "contact_id": "Xi0s6wRpuggy0ZFBynXm",
+      "phone": "+541128849320",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "MatyRdz",
+      "contact_id": "CuH6ZU3TzQWkRKBsDTlf",
+      "phone": "+528112369628",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Agustín Pérez mendez",
+      "contact_id": "N4Pz8Qlspjo1EFUUo5W1",
+      "phone": "+524921305394",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Joanna",
+      "contact_id": "rX6zjs7GWcObLus7frPC",
+      "phone": "+523334592441",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Shantal de la Serna",
+      "contact_id": "s0Gge1lbKIRpiQcmWx2j",
+      "phone": "+525576951233",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Saul Jurado Melo",
+      "contact_id": "DdKjE1leG7red7LWw0Fn",
+      "phone": "+525514069173",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Alonso Gutierrez Gonzalez",
+      "contact_id": "tiHvSnrf8g59KPZRUazE",
+      "phone": "+523318432087",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Uriel Antunez",
+      "contact_id": "0rvnVFmaAruWUA0YVlhh",
+      "phone": "+527331006292",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Marybella",
+      "contact_id": "PgI2q4OmdoIZBTSLzHKw",
+      "phone": "+524423633556",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Luis Valades",
+      "contact_id": "F1OIt6R63IR8gFWu4Yx6",
+      "phone": "+525568879806",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    }
+  ],
+  "errors": []
+}

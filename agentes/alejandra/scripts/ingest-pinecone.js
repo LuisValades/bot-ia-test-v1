@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 
 // Import dinámico para que dotenv se cargue antes
-const { embed, upsertChunks, deleteBySource, isRagEnabled, getIndexStats } = await import('../src/rag.js');
+const { embed, upsertChunks, deleteBySource, deleteAllVectors, isRagEnabled, getIndexStats } = await import('../src/rag.js');
 
 if (!isRagEnabled()) {
   console.error('❌ Pinecone no configurado. Revisa PINECONE_API_KEY y PINECONE_INDEX_HOST en .env');
@@ -162,6 +162,21 @@ async function ingestFile(filePath, sourceId) {
   return upserted;
 }
 
+// Carpeta consolidada del knowledge actualizado:
+//   <BOT GHL>/00_ KNOWLEDGE-PLAYBOOKS - AGENT ALEJANDRA/KNOWLOGE + PLAYBOOKS 28.04.26/
+// ROOT = scripts/.. = alejandra/, ROOT/../../ = BOT GHL/
+const KB_DIR = resolve(ROOT, '..', '..', '00_ KNOWLEDGE-PLAYBOOKS - AGENT ALEJANDRA', 'KNOWLOGE + PLAYBOOKS 28.04.26');
+
+// Archivos que SE INGESTAN a Pinecone (RAG). El 01_system-prompt.md NO se
+// indexa porque va directo al system message del bot.
+const INGEST_FILES = [
+  '02_knowledge-hipotecario.md',
+  '03_knowledge-pyme.md',
+  '04_playbooks-escenarios.md',
+  '05_objeciones.md',
+  '06_glosario-faq-recursos.md',
+];
+
 function collectFiles() {
   const targets = [];
 
@@ -177,22 +192,17 @@ function collectFiles() {
     return targets;
   }
 
-  // Default: knowledge.md + todos los .md en playbooks/
-  const kbPath = join(ROOT, 'knowledge.md');
-  if (existsSync(kbPath)) {
-    targets.push({ abs: kbPath, source: 'knowledge.md' });
+  if (!existsSync(KB_DIR) || !statSync(KB_DIR).isDirectory()) {
+    console.error(`❌ No existe la carpeta KB: ${KB_DIR}`);
+    process.exit(1);
   }
 
-  const playbooksDir = join(ROOT, 'playbooks');
-  if (existsSync(playbooksDir) && statSync(playbooksDir).isDirectory()) {
-    const mds = readdirSync(playbooksDir)
-      .filter(f => f.endsWith('.md'))
-      .sort();
-    for (const f of mds) {
-      targets.push({
-        abs: join(playbooksDir, f),
-        source: `playbooks/${f}`
-      });
+  for (const f of INGEST_FILES) {
+    const abs = join(KB_DIR, f);
+    if (existsSync(abs)) {
+      targets.push({ abs, source: `playbooks/${f}` });
+    } else {
+      console.warn(`  ⚠️  no encontrado: ${f}`);
     }
   }
 
@@ -214,6 +224,12 @@ async function main() {
   if (targets.length === 0) {
     console.error('❌ No encontré MDs para ingestar (ni knowledge.md ni playbooks/*.md)');
     process.exit(1);
+  }
+
+  if (cleanMode) {
+    console.log('\n🧹 --clean: borrando TODOS los vectores del índice antes de ingestar...');
+    await deleteAllVectors();
+    console.log('   ✓ Índice limpio');
   }
 
   console.log(`\n📥 Ingestando ${targets.length} archivo(s):\n`);

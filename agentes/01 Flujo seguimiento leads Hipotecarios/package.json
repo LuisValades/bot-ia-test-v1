@@ -1,0 +1,20 @@
+{
+  "name": "seguimiento-manual-hipotecarios",
+  "version": "0.1.0",
+  "description": "Tool CLI manual de seguimiento a leads del pipeline Hipotecario por stage. Genera plan + envía SMS bajo autorización explícita. Reutiliza identidad Alejandra.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "plan": "node src/index.js --plan",
+    "apply": "node src/index.js --apply"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "openai": "^4.67.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

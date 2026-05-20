@@ -122,6 +122,14 @@ export async function deleteBySource(source) {
   });
 }
 
+export async function deleteAllVectors() {
+  if (!isRagEnabled()) return;
+  await pineconeFetch('/vectors/delete', {
+    method: 'POST',
+    body: JSON.stringify({ deleteAll: true })
+  });
+}
+
 export async function getIndexStats() {
   return pineconeFetch('/describe_index_stats', { method: 'POST', body: JSON.stringify({}) });
 }

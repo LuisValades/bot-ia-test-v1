@@ -23,6 +23,14 @@ trainer/logs/
 # misc
 .DS_Store
 
+# backups locales (workflow JSONs + MD snapshots)
+backups/
+**/backups/
+
+# scripts internos n8n con secretos hardcoded (GHL PIT, Supabase service_key, n8n JWT)
+# Estos archivos son scripts operativos locales que NO deben ir al repo público
+00 _ SUBAGENTES ALEJANDRA BOT/workflows/
+
 # claude code local config (per-workspace)
 .claude/
 trainer/.env.modal

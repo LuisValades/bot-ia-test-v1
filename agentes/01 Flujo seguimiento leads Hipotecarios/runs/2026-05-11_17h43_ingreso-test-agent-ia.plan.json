@@ -1,0 +1,121 @@
+{
+  "type": "seguimiento-manual-hipotecarios",
+  "version": 1,
+  "created_at": "2026-05-11T23:43:28.615Z",
+  "pipeline": "Credito Hipotecario",
+  "stage": "Ingreso - Test Agent IA",
+  "instruction": "Auto: respondiendo a leads con inbound pendiente",
+  "total_in_stage": 15,
+  "eligible": [
+    {
+      "contact_id": "CuH6ZU3TzQWkRKBsDTlf",
+      "name": "MatyRdz",
+      "phone": "+528112369628",
+      "bot_stage": "proponiendo_horario",
+      "profile_fields": 0,
+      "last_msg_days": null,
+      "context": "bot_stage=proponiendo_horario | lead escribió hace 10211min: \"Gracias por tu tiempo y quedo atenta por si algún banco saca\"",
+      "sms_text": "Hola Martha, sigo aquí. Si en el futuro sale algo mejor con otro banco, me escribes y lo revisamos juntos. Aquí seguimos."
+    },
+    {
+      "contact_id": "0rvnVFmaAruWUA0YVlhh",
+      "name": "Uriel Antunez",
+      "phone": "+527331006292",
+      "bot_stage": "calificando",
+      "profile_fields": 0,
+      "last_msg_days": null,
+      "context": "bot_stage=calificando | lead escribió hace 29min: \"buenas tardes\"",
+      "sms_text": "Hola Uriel, soy Alejandra del equipo de Crediexpres. Vi que escribiste — perfecto, le paso tu mensaje a Efraín para que te contacte en las próximas horas y coordinen los siguientes pasos. ¿Sigue en pie?"
+    },
+    {
+      "contact_id": "F1OIt6R63IR8gFWu4Yx6",
+      "name": "Luis Valades",
+      "phone": "+525568879806",
+      "bot_stage": "calificando_hipoteca",
+      "profile_fields": 0,
+      "last_msg_days": null,
+      "context": "bot_stage=calificando_hipoteca | lead escribió hace 21min: \"hola\"",
+      "sms_text": "Hola Luis, soy Alejandra del equipo de Crediexpres. Vi tu registro para crédito PyME — cuéntame, ¿sigues interesado en explorar opciones o cambió algo?"
+    }
+  ],
+  "skipped": [
+    {
+      "name": "SERGIO LOPEZ Galeana",
+      "contact_id": "EI262b21qLloj6doANL0",
+      "phone": "+525591974283",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Fausto",
+      "contact_id": "tX85EZy4ukPCXgGl8Qiy",
+      "phone": "+524291206003",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Luis",
+      "contact_id": "mexA95OTp8xKth28URPl",
+      "phone": "+523310000025",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Rich",
+      "contact_id": "CyUtYb2Ft2vLI2eaTkmb",
+      "phone": "+529933404901",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Lawrence",
+      "contact_id": "Xi0s6wRpuggy0ZFBynXm",
+      "phone": "+541128849320",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Agustín Pérez mendez",
+      "contact_id": "N4Pz8Qlspjo1EFUUo5W1",
+      "phone": "+524921305394",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Joanna",
+      "contact_id": "rX6zjs7GWcObLus7frPC",
+      "phone": "+523334592441",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Shantal de la Serna",
+      "contact_id": "s0Gge1lbKIRpiQcmWx2j",
+      "phone": "+525576951233",
+      "skip_reason": "sin mensajes inbound",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Saul Jurado Melo",
+      "contact_id": "DdKjE1leG7red7LWw0Fn",
+      "phone": "+525514069173",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Alonso Gutierrez Gonzalez",
+      "contact_id": "tiHvSnrf8g59KPZRUazE",
+      "phone": "+523318432087",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    },
+    {
+      "name": "Marybella",
+      "contact_id": "PgI2q4OmdoIZBTSLzHKw",
+      "phone": "+524423633556",
+      "skip_reason": "bot ya respondió después del lead",
+      "skip_check": "no_pending"
+    }
+  ],
+  "errors": []
+}
